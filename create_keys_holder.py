@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Any, Iterator
 
 import cadquery as cq
-from fontTools.subset.svg import xpath
+
 
 CUT_WIDTH = 13.9
 LEFT_RIGHT_BORDER = 3.0
@@ -28,6 +28,9 @@ class Vector3D:
         yield self.x
         yield self.y
         yield self.z
+        
+    def __repr__(self):
+        return f'({self.x, self.y, self.z})'
 
     def get_list(self) -> list[float]:
         return [self.x, self.y, self.z]
@@ -49,17 +52,20 @@ class RelPosition:  # between two fingers
 def calc_index_index_pos() -> RelPosition:
     """ calculate the relative position of the index finger, if I rotate it away from the middle finger"""
     dist_finger_root_key_center = 85  # mm
-    key_width = key_height = 18  # mm
-    key_gap = 1  # mm
+    key_width = 19.9
+    key_height = 20  # mm
+    key_gap = 0  # mm
 
     dx = (key_width + key_gap) / 2
     ry = dist_finger_root_key_center - key_height / 2
-
-    phi_z_radian = 2 * math.atan(ry / dx)
+    
+    phi_z_radian = -2 * math.atan(dx /ry)
     phi_z_degree = phi_z_radian * (180 / math.pi)
+    
+    print(f'dx={dx}, ry={ry}, phi_z={phi_z_degree}')
 
-    dx = -ry * math.cos(phi_z_radian)
-    dy = -ry * math.sin(phi_z_radian)
+    dx = -ry * math.sin(phi_z_radian)
+    dy = ry * math.cos(phi_z_radian) - ry
 
     return RelPosition(move=Vector3D(dx, dy, 0),
                        rotate=Vector3D(0, 0, phi_z_degree))
@@ -122,7 +128,7 @@ class KeyPairHolderCreator:
         )
 
 
-def create_rel_keys_holder(start_keys_holder: Solid, rel_pos: RelPosition) -> Solid:
+def translate_rel_keys_holder(start_keys_holder: Solid, rel_pos: RelPosition) -> Solid:
     return (
         start_keys_holder
         .rotate((0, 0, 0), (0, 1, 0), rel_pos.rotate.y)
@@ -142,29 +148,23 @@ def create_loft_between_two_holders(left_holder: Solid, right_holder: Solid) -> 
         .loft(combine=True)
     )
 
-def create_key_holders(holder1: Solid, rel_positions: list[RelPosition]) -> Solid:
-    cur_part = holder1
-    for rel_pos in reversed(rel_positions):
-        moved_part = create_rel_keys_holder(cur_part, rel_pos=rel_pos)
-        cur_part = cur_part.union(moved_part)
-    return cur_part
+# def create_key_holders(holder1: Solid, rel_positions: list[RelPosition]) -> Solid:
+#     cur_part = holder1
+#     for rel_pos in reversed(rel_positions):
+#         moved_part = create_rel_keys_holder(cur_part, rel_pos=rel_pos)
+#         cur_part = cur_part.union(moved_part)
+#     return cur_part
         
+print(INDEX_INDEX_POS)
 
 index_finger_keys_holder = KeyPairHolderCreator().create()
+holder4 = index_finger_keys_holder
+holder34 = translate_rel_keys_holder(holder4, rel_pos=RING_PINKIE_POS).union(index_finger_keys_holder)
+holder234 = translate_rel_keys_holder(holder34, rel_pos=MIDDLE_RING_POS).union(index_finger_keys_holder)
+holder1234 = translate_rel_keys_holder(holder234, rel_pos=INDEX_MIDDLE_POS).union(index_finger_keys_holder)
+holder01234 = translate_rel_keys_holder(holder1234, rel_pos=INDEX_INDEX_POS).union(index_finger_keys_holder)
 
-#middle_finger_keys_holder = create_rel_keys_holder(index_finger_keys_holder, rel_pos=INDEX_MIDDLE_POS)
-#ring_finger_keys_holder = create_rel_keys_holder(
-#    create_rel_keys_holder(index_finger_keys_holder, rel_pos=MIDDLE_RING_POS), rel_pos=INDEX_MIDDLE_POS)
 #index_middle_loft = create_loft_between_two_holders(index_finger_keys_holder, middle_finger_keys_holder)
-#show_object(index_finger_keys_holder.union(middle_finger_keys_holder))#.union(index_middle_loft))
 
-holder3 = create_rel_keys_holder(index_finger_keys_holder, rel_pos=MIDDLE_RING_POS)
-holder2_3 = holder3.union(index_finger_keys_holder)
-holder4 = create_rel_keys_holder(holder2_3, rel_pos=INDEX_MIDDLE_POS)
-holder5 = holder4.union(index_finger_keys_holder)
-
-
-
-#result = create_key_holders(index_finger_keys_holder, [INDEX_MIDDLE_POS, MIDDLE_RING_POS])
-show_object(holder5)
+show_object(holder01234)
 
