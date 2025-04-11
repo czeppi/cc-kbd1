@@ -62,8 +62,6 @@ def calc_index_index_pos() -> RelPosition:
     phi_z_radian = -2 * math.atan(dx /ry)
     phi_z_degree = phi_z_radian * (180 / math.pi)
     
-    print(f'dx={dx}, ry={ry}, phi_z={phi_z_degree}')
-
     dx = -ry * math.sin(phi_z_radian)
     dy = ry * math.cos(phi_z_radian) - ry
 
@@ -148,23 +146,49 @@ def create_loft_between_two_holders(left_holder: Solid, right_holder: Solid) -> 
         .loft(combine=True)
     )
 
-# def create_key_holders(holder1: Solid, rel_positions: list[RelPosition]) -> Solid:
-#     cur_part = holder1
-#     for rel_pos in reversed(rel_positions):
-#         moved_part = create_rel_keys_holder(cur_part, rel_pos=rel_pos)
-#         cur_part = cur_part.union(moved_part)
-#     return cur_part
-        
-print(INDEX_INDEX_POS)
+def create_key_holders_without_loft(index_finger_keys_holder: Solid, rel_positions: list[RelPosition]) -> Solid:
+    cur_part = index_finger_keys_holder
+    for rel_pos in reversed(rel_positions):
+        moved_part = translate_rel_keys_holder(cur_part, rel_pos=rel_pos)
+        cur_part = moved_part.union(index_finger_keys_holder)
+    return cur_part
+
+def create_whole_key_holder_with_loft(index_finger_keys_holder: Solid, rel_positions: list[RelPosition]) -> Solid:
+    cur_part = index_finger_keys_holder
+    for rel_pos in reversed(rel_positions):
+        moved_part = translate_rel_keys_holder(cur_part, rel_pos=rel_pos)
+        part_with_loft = create_loft_between_two_holders(index_finger_keys_holder, moved_part)
+        cur_part = part_with_loft.union(index_finger_keys_holder)
+    return cur_part
 
 index_finger_keys_holder = KeyPairHolderCreator().create()
-holder4 = index_finger_keys_holder
-holder34 = translate_rel_keys_holder(holder4, rel_pos=RING_PINKIE_POS).union(index_finger_keys_holder)
-holder234 = translate_rel_keys_holder(holder34, rel_pos=MIDDLE_RING_POS).union(index_finger_keys_holder)
-holder1234 = translate_rel_keys_holder(holder234, rel_pos=INDEX_MIDDLE_POS).union(index_finger_keys_holder)
-holder01234 = translate_rel_keys_holder(holder1234, rel_pos=INDEX_INDEX_POS).union(index_finger_keys_holder)
+
+whole_key_holder = create_whole_key_holder_with_loft(index_finger_keys_holder, 
+                                                     [INDEX_INDEX_POS, INDEX_MIDDLE_POS, MIDDLE_RING_POS, RING_PINKIE_POS])
+
+
+
+#holder4 = index_finger_keys_holder
+
+#holder4_moved = translate_rel_keys_holder(holder4, rel_pos=RING_PINKIE_POS)
+#ring_pinkie_loft = create_loft_between_two_holders(index_finger_keys_holder, holder4_moved)
+#holder34 = ring_pinkie_loft.union(index_finger_keys_holder)
+
+#holder34_moved = translate_rel_keys_holder(holder34, rel_pos=MIDDLE_RING_POS)
+#middle_ring_loft = create_loft_between_two_holders(index_finger_keys_holder, holder34_moved)
+#holder234 = middle_ring_loft.union(index_finger_keys_holder)
+
+#holder234_moved = translate_rel_keys_holder(holder234, rel_pos=INDEX_MIDDLE_POS)
+#index_middle_loft = create_loft_between_two_holders(index_finger_keys_holder, holder234_moved)
+#holder1234 = index_middle_loft.union(index_finger_keys_holder)
+
+#holder1234_moved = translate_rel_keys_holder(holder1234, rel_pos=INDEX_INDEX_POS)
+#index_index_loft = create_loft_between_two_holders(index_finger_keys_holder, holder1234_moved)
+#holder01234 = index_index_loft.union(index_finger_keys_holder)
 
 #index_middle_loft = create_loft_between_two_holders(index_finger_keys_holder, middle_finger_keys_holder)
 
-show_object(holder01234)
+cq.exporters.export(whole_key_holder, 'key-holder.stl')
+show_object(whole_key_holder)
+
 
