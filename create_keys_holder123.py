@@ -25,19 +25,20 @@ def main():
     swinger = KeyPairHolderSwinger()
     loc = KeyPairHolderFingerLocations()
 
-    index2_holder = swinger.normal_to_front_centered * KeyPairHolderCreator().create()
-    index_holder = loc.index2_to_index * copy.copy(index2_holder)
-    middle_holder = loc.index2_to_index * loc.index_to_middle * copy.copy(index2_holder)
-    ring_holder = loc.index2_to_index * loc.index_to_middle * loc.middle_to_ring * copy.copy(index2_holder)
-    pinkie_holder = loc.index2_to_index * loc.index_to_middle * loc.middle_to_ring * loc.ring_to_pinkie * copy.copy(index2_holder)
+    index_holder = swinger.normal_to_front_centered * KeyPairHolderCreator().create()
+    index2_holder = loc.index_to_index2 * copy.copy(index_holder)
+    middle_holder = loc.index_to_middle * copy.copy(index_holder)
+    ring_holder = loc.index_to_middle * loc.middle_to_ring * copy.copy(index_holder)
+    pinkie_holder = loc.index_to_middle * loc.middle_to_ring * loc.ring_to_pinkie * copy.copy(index_holder)
 
-    index2_holder.label = 'index2'
     index_holder.label = 'index'
+    index2_holder.label = 'index2'
     middle_holder.label = 'middle'
     ring_holder.label = 'ring'
     pinkie_holder.label = 'pinkie'
 
-    assembly = Compound(label="assembly", children=[index2_holder, index_holder, middle_holder, ring_holder, pinkie_holder])
+    assembly = Compound(label="assembly", children=[index_holder, index2_holder, middle_holder, ring_holder, pinkie_holder])
+    assembly = swinger.front_centered_to_normal * assembly
 
     show_object(assembly)
 
@@ -182,14 +183,14 @@ class KeyPairHolderFingerLocations:
     """
 
     def __init__(self):
-        self._index2_to_index = self._calc_index2_index_pos()
+        self._index_to_index2 = self._calc_index_index2_pos()
         self._index_to_middle = self._create_location(move=(22, 9, 2.5), rotate=(-8, 0, -1))
         self._middle_to_ring = self._create_location(move=(25.2, -8.7, -2.4), rotate=(2, 0, 0))
         self._ring_to_pinkie = self._create_location(move=(28, -20, -16), rotate=(14, 13, 4))
 
     @property
-    def index2_to_index(self) -> Location:
-        return self._index2_to_index
+    def index_to_index2(self) -> Location:
+        return self._index_to_index2
     
     @property
     def index_to_middle(self) -> Location:
@@ -203,7 +204,7 @@ class KeyPairHolderFingerLocations:
     def ring_to_pinkie(self) -> Location:
         return self._ring_to_pinkie
 
-    def _calc_index2_index_pos(self) -> Location:
+    def _calc_index_index2_pos(self) -> Location:
         """ calculate the relative position of the index finger, if I rotate it away from the middle finger
         """
         dist_finger_root_key_center = 85  # mm
@@ -222,8 +223,7 @@ class KeyPairHolderFingerLocations:
 
         print(f'index2: dx={dx}, dy={dy}, phi_z_degree={phi_z_degree}')
 
-        #return self._create_location(move=(dx, dy, 0), rotate=(0, 0, phi_z_degree))
-        return Pos(X=dx, Y=dy) * Rot(Z=phi_z_degree)
+        return Pos(X=-dx, Y=-dy) * Rot(Z=-phi_z_degree)
 
     def _create_location(self, move: tuple[float, float, float], rotate: tuple[float, float, float]) -> Location:
         """ rotation order: y-axis, x-axis, z-axis
