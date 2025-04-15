@@ -2,7 +2,7 @@ import copy
 import math
 from dataclasses import dataclass
 from typing import Any, Iterator
-from build123d import Polyline, mirror, make_face, extrude, Plane, Part, Pos, Rot, Box, Location, Compound
+from build123d import Polyline, mirror, make_face, extrude, Plane, Part, Pos, Rot, Box, Location, Compound, Rectangle, Circle, Sketch, BaseSketchObject, loft
 from ocp_vscode import show_object
 
 #
@@ -18,29 +18,68 @@ THICKNESS = 2.0
 RIM_DY = 2.0
 TILT_ANGLE = 15.0  # => the knick is 30 degree
 HEIGHT = 10.0  # at the crease edge
+SKELETON_WIDTH = 20.0
+SKELETON_HEIGHT = 10.0
 DEGREE = math.pi / 180
 
 
 def main():
-    swinger = KeyPairHolderSwinger()
-    loc = KeyPairHolderFingerLocations()
+    assembly = AssemblyCreator().create()
+    #show_object(assembly)
 
-    index_holder = swinger.normal_to_front_centered * KeyPairHolderCreator().create()
-    index2_holder = loc.index_to_index2 * copy.copy(index_holder)
-    middle_holder = loc.index_to_middle * copy.copy(index_holder)
-    ring_holder = loc.index_to_middle * loc.middle_to_ring * copy.copy(index_holder)
-    pinkie_holder = loc.index_to_middle * loc.middle_to_ring * loc.ring_to_pinkie * copy.copy(index_holder)
+    skeleton = SkeletonCreator().create()
+    show_object(assembly + skeleton)
 
-    index_holder.label = 'index'
-    index2_holder.label = 'index2'
-    middle_holder.label = 'middle'
-    ring_holder.label = 'ring'
-    pinkie_holder.label = 'pinkie'
 
-    assembly = Compound(label="assembly", children=[index_holder, index2_holder, middle_holder,  ring_holder, pinkie_holder])
-    assembly = swinger.front_centered_to_normal * assembly
+class SkeletonCreator:
 
-    show_object(assembly)
+    def create(self):
+        faces = Sketch() + list(self._iter_u_profiles())
+        return loft(faces)
+
+    def _iter_u_profiles(self) -> Iterator[Sketch]:
+        loc = KeyPairHolderFingerLocations()
+        u_profile = self._create_u_profile()
+
+        yield copy.copy(u_profile)
+        yield loc.index_to_middle * copy.copy(u_profile)
+        yield loc.index_to_middle * loc.middle_to_ring * copy.copy(u_profile)
+
+    def _create_u_profile(self) -> BaseSketchObject:
+        outer_rect = Rectangle(SKELETON_WIDTH, SKELETON_HEIGHT)
+        inner_rect = Pos(0, THICKNESS) * Rectangle(SKELETON_WIDTH - 2 * THICKNESS, SKELETON_HEIGHT)
+        return Plane.YZ * (outer_rect - inner_rect)
+    
+
+class AssemblyCreator:
+
+    def create(self):
+        swinger = KeyPairHolderSwinger()
+        assembly = Compound(label="assembly", children=list(self._iter_key_holders()))
+        assembly = swinger.front_centered_to_normal * assembly
+        return assembly
+    
+    def _iter_key_holders(self) -> Iterator[Part]:
+        swinger = KeyPairHolderSwinger()
+        loc = KeyPairHolderFingerLocations()
+
+        index_holder = swinger.normal_to_front_centered * KeyPairHolderCreator().create()
+        index2_holder = loc.index_to_index2 * copy.copy(index_holder)
+        middle_holder = loc.index_to_middle * copy.copy(index_holder)
+        ring_holder = loc.index_to_middle * loc.middle_to_ring * copy.copy(index_holder)
+        pinkie_holder = loc.index_to_middle * loc.middle_to_ring * loc.ring_to_pinkie * copy.copy(index_holder)
+
+        index_holder.label = 'index'
+        index2_holder.label = 'index2'
+        middle_holder.label = 'middle'
+        ring_holder.label = 'ring'
+        pinkie_holder.label = 'pinkie'
+
+        yield index_holder
+        yield index2_holder
+        yield middle_holder
+        yield ring_holder
+        yield pinkie_holder
 
 
 class KeyPairHolderSwinger:
@@ -187,7 +226,6 @@ class KeyPairHolderFingerLocations:
         self._index_to_middle = self._create_location(move=(22, 7, 2.5), rotate=(-8, 0, -1))
         self._middle_to_ring = self._create_location(move=(25.2, -6.7, -2.4), rotate=(2, 0, 0))
         self._ring_to_pinkie = self._create_location(move=(33, -20, -16), rotate=(14, 30, 4))
-
 
     @property
     def index_to_index2(self) -> Location:
