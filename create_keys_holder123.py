@@ -17,14 +17,15 @@ BACK_BORDER = 3.2  # 2.7 is minimum
 THICKNESS = 2.0
 RIM_DY = 2.0
 TILT_ANGLE = 15.0  # => the knick is 30 degree
-HEIGHT = 10.0  # at the crease edge
+HOLDER_HEIGHT = 10.0  # at the crease edge
 SKELETON_WIDTH = 20.0
 SKELETON_HEIGHT = 10.0
+SLOT_LEN = 2.0
 DEGREE = math.pi / 180
 
 
 def main():
-    assembly = AssemblyCreator().create()
+    assembly = HolderAssemblyCreator().create()
     #show_object(assembly)
 
     skeleton = SkeletonCreator().create()
@@ -41,29 +42,33 @@ class SkeletonCreator:
         loc = KeyPairHolderFingerLocations()
         u_profile = self._create_u_profile()
 
-        yield copy.copy(u_profile)
-        yield loc.index_to_middle * copy.copy(u_profile)
-        yield loc.index_to_middle * loc.middle_to_ring * copy.copy(u_profile)
+        holder_dx = LEFT_RIGHT_BORDER + CUT_WIDTH + LEFT_RIGHT_BORDER
+
+        yield loc.index_to_index2 * Pos(X=-holder_dx/2 - 5, Y=-5) * copy.copy(u_profile)
+        yield Pos(Y=0) * copy.copy(u_profile)
+        yield loc.index_to_middle * Pos(Y=0) * copy.copy(u_profile)
+        yield loc.index_to_middle * loc.middle_to_ring * Pos(X=holder_dx/2, Y=-5) * copy.copy(u_profile)
+        yield loc.index_to_middle * loc.middle_to_ring * loc.ring_to_pinkie * Pos(X=-holder_dx/2, Y=5) * copy.copy(u_profile)
+        yield loc.index_to_middle * loc.middle_to_ring * loc.ring_to_pinkie * Pos(X=holder_dx/2, Y=-5) * copy.copy(u_profile)
 
     def _create_u_profile(self) -> BaseSketchObject:
         outer_rect = Rectangle(SKELETON_WIDTH, SKELETON_HEIGHT)
         inner_rect = Pos(0, THICKNESS) * Rectangle(SKELETON_WIDTH - 2 * THICKNESS, SKELETON_HEIGHT)
-        return Plane.YZ * (outer_rect - inner_rect)
+
+        u_profile = Plane.YZ * (outer_rect - inner_rect)
+        dz = -SKELETON_HEIGHT / 2 - HOLDER_HEIGHT + 2 * SLOT_LEN
+        return Pos(Z=dz) * u_profile
     
 
-class AssemblyCreator:
+class HolderAssemblyCreator:
 
     def create(self):
-        swinger = KeyPairHolderSwinger()
         assembly = Compound(label="assembly", children=list(self._iter_key_holders()))
-        #assembly = swinger.front_centered_to_normal * assembly
         return assembly
     
     def _iter_key_holders(self) -> Iterator[Part]:
-        swinger = KeyPairHolderSwinger()
         loc = KeyPairHolderFingerLocations()
 
-        #index_holder = swinger.normal_to_front_centered * KeyPairHolderCreator().create()
         index_holder = KeyPairHolderCreator().create()
         index2_holder = loc.index_to_index2 * copy.copy(index_holder)
         middle_holder = loc.index_to_middle * copy.copy(index_holder)
@@ -81,35 +86,6 @@ class AssemblyCreator:
         yield middle_holder
         yield ring_holder
         yield pinkie_holder
-
-
-class KeyPairHolderSwinger:
-    """ create locations for a holder of a pair of keys
-
-        the normal position is, when the crease edge is on the x axis
-        and the middle of the crease edge coincident the origin
-
-        the front/bach centered position is, when the center of the cut from the front/back key holder coincident the origin.
-    """
-
-    def __init__(self):
-        self._dy = BACK_BORDER + CUT_WIDTH / 2
-
-    @property
-    def normal_to_front_centered(self) -> Location:
-        return Pos(Y=self._dy) * Rot(X=TILT_ANGLE)
-    
-    @property
-    def front_centered_to_normal(self) -> Location:
-        return Rot(X=-TILT_ANGLE) * Pos(Y=-self._dy)
-
-    @property
-    def normal_to_back_centered(self) -> Location:
-        return Pos(Y=-self._dy) * Rot(X=-TILT_ANGLE)
-    
-    @property
-    def back_centered_to_normal(self) -> Location:
-        return Rot(X=TILT_ANGLE) * Pos(Y=self._dy)
 
 
 class KeyPairHolderCreator:
@@ -142,8 +118,8 @@ class KeyPairHolderCreator:
         points = [
             (0, 0),
             (y1, z1),
-            (y1, -HEIGHT),
-            (0, -HEIGHT),
+            (y1, -HOLDER_HEIGHT),
+            (0, -HOLDER_HEIGHT),
         ]
         right_half = Polyline(points)
         profile_line = right_half + mirror(right_half, Plane.YZ)
@@ -174,8 +150,8 @@ class KeyPairHolderCreator:
 
         y2, z2 = y1, z1 - RIM_DY
         y3, z3 = r * cos_tilt, z2
-        y4, z4 = y3, -HEIGHT
-        y5, z5 = 0.0, -HEIGHT
+        y4, z4 = y3, -HOLDER_HEIGHT
+        y5, z5 = 0.0, -HOLDER_HEIGHT
 
         points = [
             (y0, z0),
@@ -274,6 +250,35 @@ class KeyPairHolderFingerLocations:
 
         swinger = KeyPairHolderSwinger()
         return swinger.front_centered_to_normal * Pos(X=dx, Y=dy, Z=dz) * Rot(Z=rotz) * Rot(X=rotx) * Rot(Y=roty) * swinger.normal_to_front_centered
+
+
+class KeyPairHolderSwinger:
+    """ create locations for a holder of a pair of keys
+
+        the normal position is, when the crease edge is on the x axis
+        and the middle of the crease edge coincident the origin
+
+        the front/bach centered position is, when the center of the cut from the front/back key holder coincident the origin.
+    """
+
+    def __init__(self):
+        self._dy = BACK_BORDER + CUT_WIDTH / 2
+
+    @property
+    def normal_to_front_centered(self) -> Location:
+        return Pos(Y=self._dy) * Rot(X=TILT_ANGLE)
+    
+    @property
+    def front_centered_to_normal(self) -> Location:
+        return Rot(X=-TILT_ANGLE) * Pos(Y=-self._dy)
+
+    @property
+    def normal_to_back_centered(self) -> Location:
+        return Pos(Y=-self._dy) * Rot(X=-TILT_ANGLE)
+    
+    @property
+    def back_centered_to_normal(self) -> Location:
+        return Rot(X=TILT_ANGLE) * Pos(Y=self._dy)
 
 
 main()
