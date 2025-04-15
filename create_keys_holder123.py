@@ -224,7 +224,7 @@ class KeyPairHolderFingerLocations:
 
         print(f'index2: dx={dx}, dy={dy}, phi_z_degree={phi_z_degree}')
 
-        return Pos(X=-dx, Y=-dy) * Rot(Z=-phi_z_degree)
+        return Pos(X=-dx, Y=dy) * Rot(Z=-phi_z_degree)
 
     def _create_location(self, move: tuple[float, float, float], rotate: tuple[float, float, float]) -> Location:
         """ rotation order: y-axis, x-axis, z-axis
