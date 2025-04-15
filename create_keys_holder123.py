@@ -23,7 +23,8 @@ DEGREE = math.pi / 180
 
 def main():
     swinger = KeyPairHolderSwinger()
-    loc = KeyPairHolderFingerLocations()
+    loc = KeyPairHolderFingerLocations(new=False)
+    loc2 = KeyPairHolderFingerLocations(new=True)
 
     index_holder = swinger.normal_to_front_centered * KeyPairHolderCreator().create()
     index2_holder = loc.index_to_index2 * copy.copy(index_holder)
@@ -31,13 +32,21 @@ def main():
     ring_holder = loc.index_to_middle * loc.middle_to_ring * copy.copy(index_holder)
     pinkie_holder = loc.index_to_middle * loc.middle_to_ring * loc.ring_to_pinkie * copy.copy(index_holder)
 
+    middle_holder_new = loc2.index_to_middle * copy.copy(index_holder)
+    ring_holder_new = loc2.index_to_middle * loc2.middle_to_ring * copy.copy(index_holder) 
+    pinkie_holder_new = loc2.index_to_middle * loc2.middle_to_ring * loc2.ring_to_pinkie * copy.copy(index_holder)
+
     index_holder.label = 'index'
     index2_holder.label = 'index2'
     middle_holder.label = 'middle'
     ring_holder.label = 'ring'
     pinkie_holder.label = 'pinkie'
 
-    assembly = Compound(label="assembly", children=[index_holder, index2_holder, middle_holder, ring_holder, pinkie_holder])
+    middle_holder_new.label = 'middle-new'
+    ring_holder_new.label = 'ring-new'
+    pinkie_holder_new.label = 'pinkie-new'
+
+    assembly = Compound(label="assembly", children=[index_holder, index2_holder, middle_holder,  middle_holder_new, ring_holder, ring_holder_new, pinkie_holder, pinkie_holder_new])
     assembly = swinger.front_centered_to_normal * assembly
 
     show_object(assembly)
@@ -182,11 +191,18 @@ class KeyPairHolderFingerLocations:
         pinkie: position of the pinkie
     """
 
-    def __init__(self):
-        self._index_to_index2 = self._calc_index_index2_pos()
-        self._index_to_middle = self._create_location(move=(22, 9, 2.5), rotate=(-8, 0, -1))
-        self._middle_to_ring = self._create_location(move=(25.2, -8.7, -2.4), rotate=(2, 0, 0))
-        self._ring_to_pinkie = self._create_location(move=(28, -20, -16), rotate=(14, 13, 4))
+    def __init__(self, new: bool):
+        if new:
+            self._index_to_index2 = self._calc_index_index2_pos()
+            self._index_to_middle = self._create_location(move=(22, 7, 2.5), rotate=(-8, 0, -1))
+            self._middle_to_ring = self._create_location(move=(25.2, -6.7, -2.4), rotate=(2, 0, 0))
+            self._ring_to_pinkie = self._create_location(move=(33, -20, -16), rotate=(14, 30, 4))
+        else:
+            self._index_to_index2 = self._calc_index_index2_pos()
+            self._index_to_middle = self._create_location(move=(22, 9, 2.5), rotate=(-8, 0, -1))
+            self._middle_to_ring = self._create_location(move=(25.2, -8.7, -2.4), rotate=(2, 0, 0))
+            self._ring_to_pinkie = self._create_location(move=(28, -20, -16), rotate=(14, 13, 13))
+
 
     @property
     def index_to_index2(self) -> Location:
