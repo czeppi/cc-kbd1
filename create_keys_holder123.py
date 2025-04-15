@@ -56,14 +56,15 @@ class AssemblyCreator:
     def create(self):
         swinger = KeyPairHolderSwinger()
         assembly = Compound(label="assembly", children=list(self._iter_key_holders()))
-        assembly = swinger.front_centered_to_normal * assembly
+        #assembly = swinger.front_centered_to_normal * assembly
         return assembly
     
     def _iter_key_holders(self) -> Iterator[Part]:
         swinger = KeyPairHolderSwinger()
         loc = KeyPairHolderFingerLocations()
 
-        index_holder = swinger.normal_to_front_centered * KeyPairHolderCreator().create()
+        #index_holder = swinger.normal_to_front_centered * KeyPairHolderCreator().create()
+        index_holder = KeyPairHolderCreator().create()
         index2_holder = loc.index_to_index2 * copy.copy(index_holder)
         middle_holder = loc.index_to_middle * copy.copy(index_holder)
         ring_holder = loc.index_to_middle * loc.middle_to_ring * copy.copy(index_holder)
@@ -262,14 +263,17 @@ class KeyPairHolderFingerLocations:
 
         print(f'index2: dx={dx}, dy={dy}, phi_z_degree={phi_z_degree}')
 
-        return Pos(X=-dx, Y=dy) * Rot(Z=-phi_z_degree)
+        swinger = KeyPairHolderSwinger()
+        return swinger.front_centered_to_normal * Pos(X=-dx, Y=dy) * Rot(Z=-phi_z_degree) * swinger.normal_to_front_centered
 
     def _create_location(self, move: tuple[float, float, float], rotate: tuple[float, float, float]) -> Location:
         """ rotation order: y-axis, x-axis, z-axis
         """
         dx, dy, dz = move 
         rotx, roty, rotz = rotate
-        return Pos(X=dx, Y=dy, Z=dz) * Rot(Z=rotz) * Rot(X=rotx) * Rot(Y=roty)
+
+        swinger = KeyPairHolderSwinger()
+        return swinger.front_centered_to_normal * Pos(X=dx, Y=dy, Z=dz) * Rot(Z=rotz) * Rot(X=rotx) * Rot(Y=roty) * swinger.normal_to_front_centered
 
 
 main()
