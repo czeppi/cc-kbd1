@@ -134,7 +134,7 @@ class HolderAssemblyCreator:
     def _iter_key_holders(self) -> Iterator[Part]:
         loc = KeyPairHolderFingerLocations()
 
-        index_holder = KeyPairHolderCreator(for_cutting=self._for_cutting).create()
+        index_holder = KeyPairHolderCreator(for_cutting=self._for_cutting, y_extension=5).create()
         index2_holder = loc.index2 * copy.copy(index_holder)
         middle_holder = loc.middle * copy.copy(index_holder)
         ring_holder = loc.ring * copy.copy(index_holder)
@@ -155,11 +155,12 @@ class HolderAssemblyCreator:
 
 class KeyPairHolderCreator:
 
-    def __init__(self, for_cutting: bool = False):
+    def __init__(self, for_cutting: bool = False, y_extension: float=0.0):
         self._for_cutting = for_cutting
+        self._y_extension = y_extension
         self._width = LEFT_RIGHT_BORDER + CUT_WIDTH + LEFT_RIGHT_BORDER
         self._height = HOLDER_HEIGHT
-        self._deep = BACK_BORDER + CUT_WIDTH + FRONT_BORDER
+        self._deep = BACK_BORDER + CUT_WIDTH + FRONT_BORDER + y_extension
         self._thickness = THICKNESS
 
         if for_cutting:
@@ -213,7 +214,7 @@ class KeyPairHolderCreator:
 
         *: block point
         """
-        r = BACK_BORDER + CUT_WIDTH + FRONT_BORDER
+        r = self._deep
         sin_tilt = math.sin(TILT_ANGLE * DEGREE)
         cos_tilt = math.cos(TILT_ANGLE * DEGREE)
         thickness = self._thickness
