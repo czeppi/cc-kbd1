@@ -3,7 +3,7 @@ import math
 from dataclasses import dataclass
 from typing import Iterator
 from build123d import mirror, make_face, extrude, loft, export_stl
-from build123d import Polyline, Plane, Part, Pos, Rot, Box, Location, Compound, Rectangle, Sketch, BaseSketchObject
+from build123d import Polyline, Plane, Part, Pos, Rot, Box, Location, Compound, Rectangle, Sketch, BaseSketchObject, Cylinder
 from ocp_vscode import show_object
 
 
@@ -33,8 +33,12 @@ DEGREE = math.pi / 180
 
 
 def main():
-    assembly = FinalAssemblyCreator().create_with_slots()
-    #assembly.save()   
+    creator = FinalAssemblyCreator()
+    assembly = creator.create_with_slots()
+
+    creator.save()   
+    export_stl(assembly, 'assembly.stl')
+
     show_object(assembly)
 
 
@@ -46,9 +50,9 @@ class FinalAssemblyCreator:
 
     def create_with_slots(self) -> Compound:
         self._holder_map = self._create_holder_with_slots_map()
-        key_holders = Compound(label='holders', children=list(self._holder_map.values()))
-
         self._skeleton = self._create_skeleton_with_slots()
+
+        key_holders = Compound(label='holders', children=list(self._holder_map.values()))
         return Compound(label="assembly", children=[key_holders, self._skeleton])
 
     def _create_holder_with_slots_map(self) -> Compound:
@@ -85,17 +89,31 @@ class SkeletonCreator:
 
         holder_dx = LEFT_RIGHT_BORDER + CUT_WIDTH + LEFT_RIGHT_BORDER
 
-        u1 = loc.index2 * Pos(X=-holder_dx/2 - 5, Y=-5) * copy.copy(u_profile)
-        u2 = loc.middle * Pos(Y=0) * copy.copy(u_profile)
-        u3 = loc.ring  * Pos(Y=-2) * Rot(Z=-20) *copy.copy(u_profile)
-        u4 = loc.pinkie * Pos(X=-holder_dx/2, Y=8) * Rot(Z=-25) * copy.copy(u_profile)
-        u5 = loc.pinkie * Pos(X=holder_dx/2+5, Y=-7) * Rot(Z=-30) * copy.copy(u_profile)
-        u6 = loc.pinkie * Pos(X=holder_dx/2+15, Y=-12) * Rot(Z=-30) * copy.copy(u_profile)
+        loc1 = loc.index2 * Pos(X=-holder_dx/2 - 5, Y=-5)
+        loc2 = loc.middle * Pos(Y=0)
+        loc3 = loc.ring  * Pos(Y=-2) * Rot(Z=-20)
+        loc4 = loc.pinkie * Pos(X=-holder_dx/2, Y=8) * Rot(Z=-25)
+        loc5 = loc.pinkie * Pos(X=holder_dx/2+5, Y=-7) * Rot(Z=-30)
+        loc6 = loc.pinkie * Pos(X=holder_dx/2+15, Y=-12) * Rot(Z=-30)
+
+        u1 = loc1 * copy.copy(u_profile)
+        u2 = loc2 * copy.copy(u_profile)
+        u3 = loc3 * copy.copy(u_profile)
+        u4 = loc4 * copy.copy(u_profile)
+        u5 = loc5 * copy.copy(u_profile)
+        u6 = loc6 * copy.copy(u_profile)
 
         loft1 = loft(Sketch() + list([u1, u2, u3]))
         loft2 = loft(Sketch() + list([u3, u4, u5]))
         loft3 = loft(Sketch() + list([u5, u6]))
-        skeleton = loft1 + loft2 + loft3
+
+        cylinder = Cylinder(radius=2.5, height=50)
+
+        cylinder1 = loc.index2 * copy.copy(cylinder)
+        cylinder2 = loc2 * copy.copy(cylinder)
+        cylinder3 = loc3 * copy.copy(cylinder)
+
+        skeleton = loft1 + loft2 + loft3 - cylinder1 - cylinder2 - cylinder3
         skeleton.label = 'skeleton'
         return skeleton
 
