@@ -2,6 +2,8 @@ import copy
 import math
 from dataclasses import dataclass
 from typing import Iterator
+from pathlib import Path
+
 from build123d import mirror, make_face, extrude, loft, export_stl
 from build123d import Polyline, Plane, Part, Pos, Rot, Box, Location, Compound, Rectangle, Sketch, BaseSketchObject, Cylinder
 from ocp_vscode import show_object
@@ -31,13 +33,15 @@ SLOT_LEN = 2.0
 TOLERANCE = 0.1  # for slots
 DEGREE = math.pi / 180
 
+OUTPUT_DPATH = Path('output')
+
 
 def main():
     creator = FinalAssemblyCreator()
     assembly = creator.create_with_slots()
 
-    creator.save()   
-    export_stl(assembly, 'assembly.stl')
+    creator.save(OUTPUT_DPATH)   
+    export_stl(assembly, OUTPUT_DPATH / 'assembly.stl')
 
     show_object(assembly)
 
@@ -69,12 +73,12 @@ class FinalAssemblyCreator:
         holders_with_slots = holders_without_slots - skeleton_without_slots
         return SkeletonCreator().create() - holders_with_slots
     
-    def save(self) -> None:
+    def save(self, output_dpath: Path) -> None:
         if self._skeleton:
-            export_stl(self._skeleton, 'skeleton.stl')
+            export_stl(self._skeleton, output_dpath / 'skeleton.stl')
             
         for name, holder in self._holder_map.items():
-            export_stl(holder, f'{name}.stl')
+            export_stl(holder, output_dpath / f'{name}.stl')
 
 
 class SkeletonCreator:
