@@ -1,8 +1,9 @@
 import copy
 import math
 from dataclasses import dataclass
-from typing import Any, Iterator
-from build123d import Polyline, mirror, make_face, extrude, Plane, Part, Pos, Rot, Box, Location, Compound, Rectangle, Circle, Sketch, BaseSketchObject, loft
+from typing import Iterator
+from build123d import mirror, make_face, extrude, loft, export_stl
+from build123d import Polyline, Plane, Part, Pos, Rot, Box, Location, Compound, Rectangle, Sketch, BaseSketchObject
 from ocp_vscode import show_object
 
 #
@@ -18,17 +19,20 @@ THICKNESS = 2.0
 RIM_DY = 2.0
 TILT_ANGLE = 15.0  # => the knick is 30 degree
 HOLDER_HEIGHT = 12.0  # at the crease edge
-SKELETON_WIDTH = 16.0
+
+HOT_SWAP_SOCKET_PIN_SLOT_Y_START = 1.5
+HOT_SWAP_SOCKET_PIN_SLOT_Y_END = 4.5
+HOT_SWAP_SOCKET_PIN_SLOT_Z_LEN = 6.0
+
+SKELETON_WIDTH = 18.0
 SKELETON_HEIGHT = 10.0
 SLOT_LEN = 2.0
+
 TOLERANCE = 0.2  # for slots
 DEGREE = math.pi / 180
 
 
 def main():
-    #assembly = create_all_simple()
-    #assembly = create_holders_with_slot()
-    #assembly = create_skeleton_with_slot()
     assembly = create_all_with_slots()
     show_object(assembly)
 
@@ -42,13 +46,24 @@ def create_all_simple():
 def create_all_with_slots():
     key_holders = create_holders_with_slot()
     skeleton = create_skeleton_with_slot()
+
+    export_stl(skeleton, 'skeleton.stl')
+    #export_stl(key_holders, 'key-holders.stl')
+
     return Compound(label="assembly", children=[key_holders, skeleton])
 
 
 def create_holders_with_slot():
-    key_holders = HolderAssemblyCreator().create()
+    holder_map = HolderAssemblyCreator().create_map()
     skeleton = SkeletonCreator(for_cutting=True).create()
-    return key_holders - skeleton
+
+    new_map = {name: holder - skeleton 
+               for name, holder in holder_map.items()}
+
+    for name, holder in new_map.items():
+        export_stl(holder, f'{name}.stl')
+
+    return Compound(label='holders', children=list(new_map.values()))
 
 
 def create_skeleton_with_slot():
@@ -71,7 +86,7 @@ class SkeletonCreator:
         u1 = loc.index2 * Pos(X=-holder_dx/2 - 5, Y=-5) * copy.copy(u_profile)
         u2 = loc.middle * Pos(Y=0) * copy.copy(u_profile)
         u3 = loc.ring  * Pos(Y=-2) * Rot(Z=-20) *copy.copy(u_profile)
-        u4 = loc.pinkie * Pos(X=-holder_dx/2, Y=7) * Rot(Z=-25) * copy.copy(u_profile)
+        u4 = loc.pinkie * Pos(X=-holder_dx/2, Y=8) * Rot(Z=-25) * copy.copy(u_profile)
         u5 = loc.pinkie * Pos(X=holder_dx/2+5, Y=-7) * Rot(Z=-30) * copy.copy(u_profile)
         u6 = loc.pinkie * Pos(X=holder_dx/2+15, Y=-12) * Rot(Z=-30) * copy.copy(u_profile)
 
@@ -126,19 +141,62 @@ class HolderAssemblyCreator:
 
     def __init__(self, for_cutting: bool = False):
         self._for_cutting = for_cutting
+        self._creator = KeyPairHolderCreator(for_cutting=self._for_cutting)
 
     def create(self):
         assembly = Compound(label="key-holders", children=list(self._iter_key_holders()))
         return assembly
     
+    def create_map(self) -> dict[str, Part]:
+        return {
+            'index': self.create_index_holder(),
+            'middle': self.create_middle_holder(),
+            'ring': self.create_ring_holder(),
+            'pinkie': self.create_pinkie_holder(),
+        }
+    
+    def create_index_holder(self) -> Part:
+        loc = KeyPairHolderFingerLocations()
+        creator = self._creator
+
+        index1_holder = creator.create(front_bevel=-10, back_bevel=0)
+        index1_holder.label = 'normal'
+
+        index2_holder = loc.index2 * creator.create(front_bevel=-5, back_bevel=-5)
+        index2_holder.label = 'outside'
+
+        return Compound(label="index-holder", children=[index1_holder, index2_holder])
+
+    def create_middle_holder(self) -> Part:
+        loc = KeyPairHolderFingerLocations()
+        creator = self._creator
+        middle_holder = loc.middle * creator.create(front_bevel=-5, back_bevel=-5)
+        middle_holder.label = 'middle'
+        return middle_holder
+
+    def create_ring_holder(self) -> Part:
+        loc = KeyPairHolderFingerLocations()
+        creator = self._creator
+        ring_holder = loc.ring * creator.create(front_bevel=5, back_bevel=-5)
+        ring_holder.label = 'ring'
+        return ring_holder
+
+    def create_pinkie_holder(self) -> Part:
+        loc = KeyPairHolderFingerLocations()
+        creator = self._creator
+        pinkie_holder = loc.pinkie * creator.create(front_bevel=0, back_bevel=5, extra_height=1.0)
+        pinkie_holder.label = 'pinkie'
+        return pinkie_holder
+    
     def _iter_key_holders(self) -> Iterator[Part]:
         loc = KeyPairHolderFingerLocations()
+        creator = self._creator
 
-        index_holder = KeyPairHolderCreator(for_cutting=self._for_cutting, y_extension=5).create()
-        index2_holder = loc.index2 * copy.copy(index_holder)
-        middle_holder = loc.middle * copy.copy(index_holder)
-        ring_holder = loc.ring * copy.copy(index_holder)
-        pinkie_holder = loc.pinkie * copy.copy(index_holder)
+        index2_holder = loc.index2 * creator.create(front_bevel=-5, back_bevel=-5)
+        index_holder = creator.create(front_bevel=-10, back_bevel=0)
+        middle_holder = loc.middle * creator.create(front_bevel=-5, back_bevel=-5)
+        ring_holder = loc.ring * creator.create(front_bevel=5, back_bevel=-5)
+        pinkie_holder = loc.pinkie * creator.create(front_bevel=0, back_bevel=5)
 
         index_holder.label = 'index'
         index2_holder.label = 'index2'
@@ -155,12 +213,11 @@ class HolderAssemblyCreator:
 
 class KeyPairHolderCreator:
 
-    def __init__(self, for_cutting: bool = False, y_extension: float=0.0):
+    def __init__(self, for_cutting: bool = False):
         self._for_cutting = for_cutting
-        self._y_extension = y_extension
         self._width = LEFT_RIGHT_BORDER + CUT_WIDTH + LEFT_RIGHT_BORDER
         self._height = HOLDER_HEIGHT
-        self._deep = BACK_BORDER + CUT_WIDTH + FRONT_BORDER + y_extension
+        self._deep = BACK_BORDER + CUT_WIDTH + FRONT_BORDER
         self._thickness = THICKNESS
 
         if for_cutting:
@@ -168,47 +225,55 @@ class KeyPairHolderCreator:
             self._height -= SLOT_LEN
             self._thickness += 2 * TOLERANCE
 
-    def create(self) -> Part:
-        block = self._create_block()
-        hole = self._create_hole()
+    def create(self, front_bevel: float=0.0, back_bevel: float=0.0, extra_height: float=0.0) -> Part:
+        block = self._create_block(front_bevel=front_bevel, back_bevel=back_bevel, extra_height=extra_height)
+        hole = self._create_interior(extra_height=extra_height)
         holder = block - hole
         holder = Pos(X=-self._width/2) * holder  # center on x axis
         holder = self._cut(holder)
 
         return holder
     
-    def _create_block(self) -> Part:
+    def _create_block(self, front_bevel: float, back_bevel: float, extra_height: float) -> Part:
         """
         order of points:
+               z
+          6    |    1
+          5    0 ---2--------> y
+           4       3
 
-                    1
-               0
-               3    2
         """
         r = self._deep
         y1 = r * math.cos(TILT_ANGLE * DEGREE)
         z1 = r * math.sin(TILT_ANGLE * DEGREE)
-        h = self._height
+        z2 = z1 - self._thickness - RIM_DY
+        y3 = y1 + back_bevel
+        y4 = -y1 - front_bevel
+        h = self._height + extra_height
 
         points = [
             (0, 0),
             (y1, z1),
-            (y1, -h),
-            (0, -h),
+            (y1, z2),
+            (y3, -h),
+            (y4, -h),
+            (-y1, z2),
+            (-y1, z1),
+            (0, 0),
         ]
         right_half = Polyline(points)
-        profile_line = right_half + mirror(right_half, Plane.YZ)
+        profile_line = right_half #+ mirror(right_half, Plane.YZ)
 
         profile_face = make_face(Plane.YZ * profile_line)
         return extrude(profile_face, -self._width).clean()
     
-    def _create_hole(self) -> Part:
+    def _create_interior(self, extra_height: float) -> Part:
         """
         order of points:
-
-                    * 
+              z
+              |     * 
               *   1
-              0   2 3
+              0---2-3---> y
                
               5     4
 
@@ -218,7 +283,7 @@ class KeyPairHolderCreator:
         sin_tilt = math.sin(TILT_ANGLE * DEGREE)
         cos_tilt = math.cos(TILT_ANGLE * DEGREE)
         thickness = self._thickness
-        h = self._height
+        h = self._height + extra_height
 
         y0, z0 = 0.0, -thickness / cos_tilt
 
@@ -226,8 +291,8 @@ class KeyPairHolderCreator:
         z1 = z0 + y1 * sin_tilt / cos_tilt
 
         y2, z2 = y1, z1 - RIM_DY
-        y3, z3 = r * cos_tilt, z2
-        y4, z4 = y3, -h
+        y3, z3 = 100, z2
+        y4, z4 = 100, -h
         y5, z5 = 0.0, -h
 
         points = [
@@ -252,16 +317,41 @@ class KeyPairHolderCreator:
         thickness = self._thickness
         loc = KeyPairHolderSwinger()
         cut_box = Pos(Z=-thickness/2) * Box(CUT_WIDTH, CUT_WIDTH, 1.1 * thickness)
+        front_hot_swap_box = self._create_hot_swap_slot_box(front=True)
+        back_hot_swap_box = self._create_hot_swap_slot_box(front=False)
 
         holder = loc.normal_to_front_centered * holder  # move front cut in origin
-        holder = holder - cut_box
+        holder = holder - cut_box - front_hot_swap_box
         holder = loc.front_centered_to_normal * holder  # move back
 
         holder = loc.normal_to_back_centered * holder  # move back cut in origin
-        holder = holder - cut_box
+        holder = holder - cut_box - back_hot_swap_box
         holder = loc.back_centered_to_normal * holder  # move back
 
         return holder
+    
+    def _create_hot_swap_slot_box(self, front: bool) -> Part:
+        cut_eps = 0.1
+
+        # box
+        x_len = LEFT_RIGHT_BORDER + cut_eps
+        y_len = HOT_SWAP_SOCKET_PIN_SLOT_Y_END - HOT_SWAP_SOCKET_PIN_SLOT_Y_START
+        z_len = HOT_SWAP_SOCKET_PIN_SLOT_Z_LEN + cut_eps
+
+        box = Box(x_len, y_len, z_len)
+
+        # pos
+        dx = CUT_WIDTH/2 + LEFT_RIGHT_BORDER/2
+        dy = CUT_WIDTH/2 - y_len/2 - HOT_SWAP_SOCKET_PIN_SLOT_Y_START
+        dz = z_len/2 - HOT_SWAP_SOCKET_PIN_SLOT_Z_LEN
+
+        if not front:
+            dx = -dx
+            dy = -dy
+
+        pos = Pos(X=dx, Y=dy, Z=dz) 
+        
+        return pos * box
 
 
 class KeyPairHolderFingerLocations:
