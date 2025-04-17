@@ -33,42 +33,51 @@ DEGREE = math.pi / 180
 
 
 def main():
-    assembly = create_all_with_slots()
+    assembly = FinalAssemblyCreator().create_with_slots()
+    #assembly.save()   
     show_object(assembly)
 
 
-def create_all_with_slots() -> Compound:
-    key_holders = create_holders_with_slot()
-    skeleton = create_skeleton_with_slot(key_holders)
+class FinalAssemblyCreator:
 
-    export_stl(skeleton, 'skeleton.stl')
+    def __init__(self):
+        self._skeleton: Part | None = None
+        self._holder_map: dict[str, Part] = {}
 
-    return Compound(label="assembly", children=[key_holders, skeleton])
+    def create_with_slots(self) -> Compound:
+        self._holder_map = self._create_holder_with_slots_map()
+        key_holders = Compound(label='holders', children=list(self._holder_map.values()))
 
+        self._skeleton = self._create_skeleton_with_slots()
+        return Compound(label="assembly", children=[key_holders, self._skeleton])
 
-def create_holders_with_slot() -> Compound:
-    holder_map = HolderAssemblyCreator().create_map()
-    skeleton = SkeletonCreator(for_cutting=True).create()
+    def _create_holder_with_slots_map(self) -> Compound:
+        holder_without_slots_map = HolderAssemblyCreator().create_map()
+        skeleton_without_slots = SkeletonCreator(tolerance=TOLERANCE, height_offset=-SLOT_LEN).create()
+        return {name: holder - skeleton_without_slots 
+                for name, holder in holder_without_slots_map.items()}
 
-    new_map = {name: holder - skeleton 
-               for name, holder in holder_map.items()}
+    def _create_skeleton_with_slots(self) -> Part:
+        holder_without_slots_map = HolderAssemblyCreator(tolerance=TOLERANCE).create_map()
+        holders_without_slots = Compound(label='holders', children=list(holder_without_slots_map.values()))
+        skeleton_without_slots = SkeletonCreator(tolerance=TOLERANCE, height_offset=-SLOT_LEN).create()
 
-    for name, holder in new_map.items():
-        export_stl(holder, f'{name}.stl')
-
-    return Compound(label='holders', children=list(new_map.values()))
-
-
-def create_skeleton_with_slot(key_holders_with_slot: Compound) -> Part:
-    skeleton = SkeletonCreator().create()
-    # key_holders = HolderAssemblyCreator(for_cutting=True).create()
-    return skeleton - key_holders_with_slot
+        holders_with_slots = holders_without_slots - skeleton_without_slots
+        return SkeletonCreator().create() - holders_with_slots
+    
+    def save(self) -> None:
+        if self._skeleton:
+            export_stl(self._skeleton, 'skeleton.stl')
+            
+        for name, holder in self._holder_map.items():
+            export_stl(holder, f'{name}.stl')
 
 
 class SkeletonCreator:
 
-    def __init__(self, for_cutting: bool = False):
-        self._for_cutting = for_cutting
+    def __init__(self, tolerance: float = 0.0, height_offset: float = 0.0):
+        self._tolerance = tolerance
+        self._height_offset = height_offset
 
     def create(self) -> Part:
         loc = KeyPairHolderFingerLocations()
@@ -112,16 +121,10 @@ class SkeletonCreator:
         yield loc.pinkie * Pos(X=holder_dx/2+5, Y=-5) * Rot(Z=-30) * copy.copy(u_profile)
 
     def _create_u_profile(self) -> BaseSketchObject:
-        if self._for_cutting:
-            width = SKELETON_WIDTH + 2 * TOLERANCE
-            height = SKELETON_HEIGHT - SLOT_LEN
-            thickness = THICKNESS + 2 * TOLERANCE
-            dz = -height / 2 - HOLDER_HEIGHT + SLOT_LEN
-        else:
-            width = SKELETON_WIDTH
-            height = SKELETON_HEIGHT
-            thickness = THICKNESS
-            dz = -height / 2 - HOLDER_HEIGHT + 2 * SLOT_LEN
+        width = SKELETON_WIDTH + self._tolerance
+        height = SKELETON_HEIGHT + self._height_offset
+        thickness = THICKNESS + self._tolerance
+        dz = -height / 2 - HOLDER_HEIGHT + 2 * SLOT_LEN + self._height_offset
 
         outer_rect = Rectangle(width, height)
         inner_rect = Pos(0, thickness) * Rectangle(width - 2 * thickness, height)
@@ -132,9 +135,8 @@ class SkeletonCreator:
 
 class HolderAssemblyCreator:
 
-    def __init__(self, for_cutting: bool = False):
-        self._for_cutting = for_cutting
-        self._creator = KeyPairHolderCreator(for_cutting=self._for_cutting)
+    def __init__(self, tolerance: float = 0.0):
+        self._creator = KeyPairHolderCreator(tolerance=tolerance)
 
     def create(self) -> Compound:
         return Compound(label="key-holders", children=list(self._iter_key_holders()))
@@ -205,17 +207,11 @@ class HolderAssemblyCreator:
 
 class KeyPairHolderCreator:
 
-    def __init__(self, for_cutting: bool = False):
-        self._for_cutting = for_cutting
-        self._width = LEFT_RIGHT_BORDER + CUT_WIDTH + LEFT_RIGHT_BORDER
+    def __init__(self, tolerance: float = 0.0):
+        self._width = LEFT_RIGHT_BORDER + CUT_WIDTH + LEFT_RIGHT_BORDER + tolerance
         self._height = HOLDER_HEIGHT
         self._deep = BACK_BORDER + CUT_WIDTH + FRONT_BORDER
-        self._thickness = THICKNESS
-
-        if for_cutting:
-            self._width += 2 * TOLERANCE
-            self._height -= SLOT_LEN
-            self._thickness += 2 * TOLERANCE
+        self._thickness = THICKNESS + tolerance
 
     def create(self, front_bevel: float=0.0, back_bevel: float=0.0, extra_height: float=0.0) -> Part:
         block = self._create_block(front_bevel=front_bevel, back_bevel=back_bevel, extra_height=extra_height)
