@@ -38,31 +38,31 @@ def main():
 
 
 def create_all_with_slots() -> Compound:
-    skeleton = create_skeleton_with_slot()
-    key_holders = create_holders_with_slot(skeleton)
+    key_holders = create_holders_with_slot()
+    skeleton = create_skeleton_with_slot(key_holders)
 
     export_stl(skeleton, 'skeleton.stl')
 
     return Compound(label="assembly", children=[key_holders, skeleton])
 
 
-def create_skeleton_with_slot() -> Part:
-    skeleton = SkeletonCreator().create()
-    key_holders = HolderAssemblyCreator(for_cutting=True).create()
-    return skeleton - key_holders
-
-
-def create_holders_with_slot(skeleton_with_slots: Part) -> Compound:
+def create_holders_with_slot() -> Compound:
     holder_map = HolderAssemblyCreator().create_map()
-    #skeleton = SkeletonCreator(for_cutting=True).create()
+    skeleton = SkeletonCreator(for_cutting=True).create()
 
-    new_map = {name: holder - skeleton_with_slots 
+    new_map = {name: holder - skeleton 
                for name, holder in holder_map.items()}
 
     for name, holder in new_map.items():
         export_stl(holder, f'{name}.stl')
 
     return Compound(label='holders', children=list(new_map.values()))
+
+
+def create_skeleton_with_slot(key_holders_with_slot: Compound) -> Part:
+    skeleton = SkeletonCreator().create()
+    # key_holders = HolderAssemblyCreator(for_cutting=True).create()
+    return skeleton - key_holders_with_slot
 
 
 class SkeletonCreator:
@@ -151,7 +151,7 @@ class HolderAssemblyCreator:
         loc = KeyPairHolderFingerLocations()
         creator = self._creator
 
-        index1_holder = creator.create(front_bevel=-10, back_bevel=0)
+        index1_holder = creator.create(front_bevel=-10, back_bevel=0, extra_height=1.0)
         index1_holder.label = 'normal'
 
         index2_holder = loc.index2 * creator.create(front_bevel=-5, back_bevel=-5)
