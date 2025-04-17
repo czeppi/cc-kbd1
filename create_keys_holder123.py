@@ -6,10 +6,10 @@ from build123d import mirror, make_face, extrude, loft, export_stl
 from build123d import Polyline, Plane, Part, Pos, Rot, Box, Location, Compound, Rectangle, Sketch, BaseSketchObject
 from ocp_vscode import show_object
 
-#
-# all values in this file are in mm
-#
 
+#
+# all length values in this file are in mm
+#
 
 CUT_WIDTH = 13.9
 LEFT_RIGHT_BORDER = 3.0
@@ -37,27 +37,26 @@ def main():
     show_object(assembly)
 
 
-def create_all_simple():
-    key_holders = HolderAssemblyCreator(for_cutting=True).create()
-    skeleton = SkeletonCreator().create()
-    return Compound(label="assembly", children=[key_holders, skeleton])
-
-
-def create_all_with_slots():
-    key_holders = create_holders_with_slot()
+def create_all_with_slots() -> Compound:
     skeleton = create_skeleton_with_slot()
+    key_holders = create_holders_with_slot(skeleton)
 
     export_stl(skeleton, 'skeleton.stl')
-    #export_stl(key_holders, 'key-holders.stl')
 
     return Compound(label="assembly", children=[key_holders, skeleton])
 
 
-def create_holders_with_slot():
-    holder_map = HolderAssemblyCreator().create_map()
-    skeleton = SkeletonCreator(for_cutting=True).create()
+def create_skeleton_with_slot() -> Part:
+    skeleton = SkeletonCreator().create()
+    key_holders = HolderAssemblyCreator(for_cutting=True).create()
+    return skeleton - key_holders
 
-    new_map = {name: holder - skeleton 
+
+def create_holders_with_slot(skeleton_with_slots: Part) -> Compound:
+    holder_map = HolderAssemblyCreator().create_map()
+    #skeleton = SkeletonCreator(for_cutting=True).create()
+
+    new_map = {name: holder - skeleton_with_slots 
                for name, holder in holder_map.items()}
 
     for name, holder in new_map.items():
@@ -66,18 +65,12 @@ def create_holders_with_slot():
     return Compound(label='holders', children=list(new_map.values()))
 
 
-def create_skeleton_with_slot():
-    skeleton = SkeletonCreator().create()
-    key_holders = HolderAssemblyCreator(for_cutting=True).create()
-    return skeleton - key_holders
-
-
 class SkeletonCreator:
 
     def __init__(self, for_cutting: bool = False):
         self._for_cutting = for_cutting
 
-    def create(self):
+    def create(self) -> Part:
         loc = KeyPairHolderFingerLocations()
         u_profile = self._create_u_profile()
 
@@ -97,7 +90,7 @@ class SkeletonCreator:
         skeleton.label = 'skeleton'
         return skeleton
 
-    def create_old(self):
+    def create_old(self) -> Part:
         faces = Sketch() + list(self._iter_u_profiles())
         return loft(faces)
 
@@ -143,9 +136,8 @@ class HolderAssemblyCreator:
         self._for_cutting = for_cutting
         self._creator = KeyPairHolderCreator(for_cutting=self._for_cutting)
 
-    def create(self):
-        assembly = Compound(label="key-holders", children=list(self._iter_key_holders()))
-        return assembly
+    def create(self) -> Compound:
+        return Compound(label="key-holders", children=list(self._iter_key_holders()))
     
     def create_map(self) -> dict[str, Part]:
         return {
@@ -155,7 +147,7 @@ class HolderAssemblyCreator:
             'pinkie': self.create_pinkie_holder(),
         }
     
-    def create_index_holder(self) -> Part:
+    def create_index_holder(self) -> Compound:
         loc = KeyPairHolderFingerLocations()
         creator = self._creator
 
