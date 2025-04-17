@@ -28,7 +28,7 @@ SKELETON_WIDTH = 18.0
 SKELETON_HEIGHT = 10.0
 SLOT_LEN = 2.0
 
-TOLERANCE = 0.2  # for slots
+TOLERANCE = 0.1  # for slots
 DEGREE = math.pi / 180
 
 
@@ -139,9 +139,9 @@ class SkeletonCreator:
         yield loc.pinkie * Pos(X=holder_dx/2+5, Y=-5) * Rot(Z=-30) * copy.copy(u_profile)
 
     def _create_u_profile(self) -> BaseSketchObject:
-        width = SKELETON_WIDTH + self._tolerance
+        width = SKELETON_WIDTH + 2 * self._tolerance
         height = SKELETON_HEIGHT + self._height_offset
-        thickness = THICKNESS + self._tolerance
+        thickness = THICKNESS + 2 * self._tolerance
         dz = -height / 2 - HOLDER_HEIGHT + 2 * SLOT_LEN + self._height_offset
 
         outer_rect = Rectangle(width, height)
@@ -226,10 +226,10 @@ class HolderAssemblyCreator:
 class KeyPairHolderCreator:
 
     def __init__(self, tolerance: float = 0.0):
-        self._width = LEFT_RIGHT_BORDER + CUT_WIDTH + LEFT_RIGHT_BORDER + tolerance
+        self._width = LEFT_RIGHT_BORDER + CUT_WIDTH + LEFT_RIGHT_BORDER + 2 * tolerance
         self._height = HOLDER_HEIGHT
         self._deep = BACK_BORDER + CUT_WIDTH + FRONT_BORDER
-        self._thickness = THICKNESS + tolerance
+        self._thickness = THICKNESS + 2 * tolerance
 
     def create(self, front_bevel: float=0.0, back_bevel: float=0.0, extra_height: float=0.0) -> Part:
         block = self._create_block(front_bevel=front_bevel, back_bevel=back_bevel, extra_height=extra_height)
