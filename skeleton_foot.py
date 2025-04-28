@@ -24,19 +24,14 @@ OUTPUT_DPATH = Path('output')
 
 
 def main():
-    creator = SkeletonHolderCreator()
+    creator = SkeletonFootCreator()
     holder = creator.create()
-    export_stl(holder, OUTPUT_DPATH / 'skeleton-holder.stl')
 
-    #holder = extrude(Rectangle(3, 4), 5)
-    #holder = Wedge(5, 2, 5, xmin=0, xmax=1, zmin=0, zmax=5)
-
-    #holder = Plane(origin=(0,0,0), z_dir=(0,1,1)) * Cylinder(radius=5, height=2)
-
+    export_stl(holder, OUTPUT_DPATH / 'skeleton-foot.stl')
     show_object(holder)
 
 
-class SkeletonHolderCreator:
+class SkeletonFootCreator:
     """
     view from top:
 
@@ -74,30 +69,7 @@ class SkeletonHolderCreator:
         skeleton_u_plus = offset(skeleton_u, TOLERANCE, kind=Kind.INTERSECTION)
         skeleton_shell = offset(skeleton_u_plus, SKELETON_THICKNESS, kind=Kind.INTERSECTION) - skeleton_u_plus
 
-        #h = skeleton_shell.bounding_box().size.Y
         return extrude(skeleton_shell, SLOT_HEIGHT)
-    
-    def _create_wedge_old1(self):
-        r = SKELETON_WIDTH + 2 * TOLERANCE + 2 * SKELETON_THICKNESS
-        x3 = r * math.cos(HOLDER_ANGLE * DEGREE)
-        y3 = r * math.sin(HOLDER_ANGLE * DEGREE)
-        points = [(0.0, 0.0), (r, 0.0), (x3, y3)]
-
-        polygon = Polygon(points)
-        height = SKELETON_HEIGHT  + 2 * TOLERANCE + 2 * SKELETON_THICKNESS
-        wedge = extrude(polygon, height)
-        return Plane.YZ * wedge
-
-    def _create_wedge_old1(self):
-        length = SKELETON_WIDTH + 2 * TOLERANCE + 2 * SKELETON_THICKNESS
-        width = SKELETON_HEIGHT + 2 * TOLERANCE + 2 * SKELETON_THICKNESS
-        height = FOOT_HEIGHT
-
-        box = Box(length=length, width=width, height=height)
-        cut_height = length * math.tan(math.radians(HOLDER_ANGLE))
-        wedge = Box(length=length, width=2 * width, height=cut_height).rotate(Axis.X, 90).translate((0, -width/2, height))
-        sloped_body = box - wedge
-        return sloped_body
 
     def _create_wedge(self):
         """
@@ -143,25 +115,6 @@ class SkeletonHolderCreator:
         rotated_wedge = Rot(X=-90) * Rot(Z=90) * (wedge + stud)
         box = rotated_wedge.bounding_box()
         return Pos(Z=-box.max.Z) * rotated_wedge
-
-    def old1(self):
-        wedge_slope_face = wedge.faces().sort_by(Axis.X)[-1]
-        wedge_joint_loc = wedge_slope_face.center()
-
-        stud = Plane.YZ * Cylinder(radius=STUD_RADIUS, height=STUD_HEIGHT)
-        stud_top_face = stud.faces().sort_by(Axis.X).last
-        stud_joint_loc = stud_top_face.center()
-
-        Location
-
-        wedge_joint = RigidJoint(label="the", to_part=wedge, joint_location=wedge_joint_loc)
-        stud_joint = RigidJoint(label="the", to_part=stud, joint_location=stud_joint_loc)
-        
-        wedge_joint.connect_to(stud_joint)
-
-        wedge.fuse(stud_joint)
-        return wedge
-
 
     def _create_stud(self) -> Part:
         stud = Cylinder(radius=STUD_RADIUS, height=STUD_HEIGHT)
