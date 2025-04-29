@@ -20,7 +20,7 @@ BACK_BORDER = 3.2  # 2.7 is minimum
 THICKNESS = 2.0
 RIM_DY = 2.0
 TILT_ANGLE = 15.0  # => the knick is 30 degree
-HOLDER_HEIGHT = 12.0  # at the crease edge
+HOLDER_HEIGHT = 10.0  # at the crease edge
 
 HOT_SWAP_SOCKET_PIN_SLOT_Y_START = 1.5
 HOT_SWAP_SOCKET_PIN_SLOT_Y_END = 4.5
@@ -382,6 +382,10 @@ class KeyPairHolderFingerLocations:
         self._middle_to_ring = self._create_location(move=(25.2, -6.7, -2.4), rotate=(2, 0, 0))
         self._ring_to_pinkie = self._create_location(move=(33, -20, -16), rotate=(14, 30, 4))
 
+        self._ring_move_correction = self._create_location(move=(2, -2, 0), rotate=(0, 0, 0))
+        self._ring_rotate_correction = self._create_location(move=(2, -2, 0), rotate=(0, 5, 0))
+        self._pinkie_rotate_correction = self._create_location(move=(0, 0, 0), rotate=(0, 0, -10))
+
     def _calc_index_index2_pos(self) -> Location:
         """ calculate the relative position of the index finger, if I rotate it away from the middle finger
         """
@@ -427,11 +431,11 @@ class KeyPairHolderFingerLocations:
     
     @property
     def ring(self) -> Location:
-        return self._index_to_middle * self._middle_to_ring
+        return self._ring_move_correction * self._index_to_middle * self._middle_to_ring * self._ring_rotate_correction
     
     @property
     def pinkie(self) -> Location:
-        return self._index_to_middle * self._middle_to_ring * self._ring_to_pinkie
+        return self._index_to_middle * self._middle_to_ring * self._ring_to_pinkie * self._pinkie_rotate_correction
 
 
 class KeyPairHolderSwinger:
