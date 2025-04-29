@@ -172,7 +172,8 @@ class HolderAssemblyCreator:
         loc = KeyPairHolderFingerLocations()
         creator = self._creator
 
-        index1_holder = creator.create(front_left_bevel=-9, front_right_bevel=-14, back_left_bevel=-3, back_right_bevel=0, extra_height=1.0)
+        index1_holder = creator.create(front_left_bevel=-9, front_right_bevel=-14, back_left_bevel=-3, back_right_bevel=0, 
+                                       extra_left_height=1.0, extra_right_height=1.0)
         index1_holder.label = 'normal'
 
         index2_holder = loc.index2 * creator.create(front_left_bevel=-3, front_right_bevel=-8, back_left_bevel=-10, back_right_bevel=-5)
@@ -190,14 +191,16 @@ class HolderAssemblyCreator:
     def create_ring_holder(self) -> Part:
         loc = KeyPairHolderFingerLocations()
         creator = self._creator
-        ring_holder = loc.ring * creator.create(front_left_bevel=-9, front_right_bevel=-1, back_left_bevel=-2, back_right_bevel=-10)
+        ring_holder = loc.ring * creator.create(front_left_bevel=-9, front_right_bevel=-1, back_left_bevel=-2, back_right_bevel=-10,
+                                                extra_left_height=1.0)
         ring_holder.label = 'ring'
         return ring_holder
 
     def create_pinkie_holder(self) -> Part:
         loc = KeyPairHolderFingerLocations()
         creator = self._creator
-        pinkie_holder = loc.pinkie * creator.create(front_left_bevel=-14, front_right_bevel=-2, back_left_bevel=2, back_right_bevel=-7,  extra_height=1.0)
+        pinkie_holder = loc.pinkie * creator.create(front_left_bevel=-14, front_right_bevel=-2, back_left_bevel=2, back_right_bevel=-7,  
+                                                    extra_left_height=1.0)
         pinkie_holder.label = 'pinkie'
         return pinkie_holder
     
@@ -214,13 +217,15 @@ class KeyPairHolderCreator:
                front_right_bevel: float=0.0, 
                back_left_bevel: float=0.0, 
                back_right_bevel: float=0.0, 
-               extra_height: float=0.0) -> Part:
+               extra_left_height: float=0.0,
+               extra_right_height: float=0.0) -> Part:
         block = self._create_block(front_left_bevel=front_left_bevel, 
                                    front_right_bevel=front_right_bevel,
                                    back_left_bevel=back_left_bevel,
                                    back_right_bevel=back_right_bevel,
-                                   extra_height=extra_height)
-        hole = self._create_interior(extra_height=extra_height)
+                                   extra_left_height=extra_left_height,
+                                   extra_right_height=extra_right_height)
+        hole = self._create_interior(extra_height=max(extra_left_height, extra_right_height))
         holder = block - hole
         holder = Pos(X=-self._width/2) * holder  # center on x axis
         holder = self._cut(holder)
@@ -231,13 +236,14 @@ class KeyPairHolderCreator:
                       front_right_bevel: float, 
                       back_left_bevel: float, 
                       back_right_bevel: float, 
-                      extra_height: float) -> Part:
+                      extra_left_height: float,
+                      extra_right_height) -> Part:
         left_profile_face = self._create_block_profile_face(front_bevel=front_left_bevel, 
                                                             back_bevel=back_left_bevel, 
-                                                            extra_height=extra_height)
+                                                            extra_height=extra_left_height)
         right_profile_face = Pos(X=self._width) * self._create_block_profile_face(front_bevel=front_right_bevel, 
                                                                                   back_bevel=back_right_bevel, 
-                                                                                  extra_height=extra_height)
+                                                                                  extra_height=extra_right_height)
 
         return loft(Sketch() + list([left_profile_face, right_profile_face]))
     
