@@ -160,9 +160,6 @@ class HolderAssemblyCreator:
     def __init__(self, tolerance: float = 0.0):
         self._creator = KeyPairHolderCreator(tolerance=tolerance)
 
-    def create(self) -> Compound:
-        return Compound(label="key-holders", children=list(self._iter_key_holders()))
-    
     def create_map(self) -> dict[str, Part]:
         return {
             'index': self.create_index_holder(),
@@ -175,10 +172,10 @@ class HolderAssemblyCreator:
         loc = KeyPairHolderFingerLocations()
         creator = self._creator
 
-        index1_holder = creator.create(front_bevel=-10, back_bevel=0, extra_height=1.0)
+        index1_holder = creator.create(front_left_bevel=-9, front_right_bevel=-14, back_left_bevel=-3, back_right_bevel=0, extra_height=1.0)
         index1_holder.label = 'normal'
 
-        index2_holder = loc.index2 * creator.create(front_bevel=-5, back_bevel=-5)
+        index2_holder = loc.index2 * creator.create(front_left_bevel=-3, front_right_bevel=-8, back_left_bevel=-10, back_right_bevel=-5)
         index2_holder.label = 'outside'
 
         return Compound(label="index-holder", children=[index1_holder, index2_holder])
@@ -186,46 +183,24 @@ class HolderAssemblyCreator:
     def create_middle_holder(self) -> Part:
         loc = KeyPairHolderFingerLocations()
         creator = self._creator
-        middle_holder = loc.middle * creator.create(front_bevel=-5, back_bevel=-5)
+        middle_holder = loc.middle * creator.create(front_left_bevel=-9, front_right_bevel=-5, back_left_bevel=-5, back_right_bevel=-8)
         middle_holder.label = 'middle'
         return middle_holder
 
     def create_ring_holder(self) -> Part:
         loc = KeyPairHolderFingerLocations()
         creator = self._creator
-        ring_holder = loc.ring * creator.create(front_bevel=5, back_bevel=-5)
+        ring_holder = loc.ring * creator.create(front_left_bevel=-9, front_right_bevel=-1, back_left_bevel=-2, back_right_bevel=-10)
         ring_holder.label = 'ring'
         return ring_holder
 
     def create_pinkie_holder(self) -> Part:
         loc = KeyPairHolderFingerLocations()
         creator = self._creator
-        pinkie_holder = loc.pinkie * creator.create(front_bevel=0, back_bevel=5, extra_height=1.0)
+        pinkie_holder = loc.pinkie * creator.create(front_left_bevel=-14, front_right_bevel=-2, back_left_bevel=2, back_right_bevel=-7,  extra_height=1.0)
         pinkie_holder.label = 'pinkie'
         return pinkie_holder
     
-    def _iter_key_holders(self) -> Iterator[Part]:
-        loc = KeyPairHolderFingerLocations()
-        creator = self._creator
-
-        index2_holder = loc.index2 * creator.create(front_bevel=-5, back_bevel=-5)
-        index_holder = creator.create(front_bevel=-10, back_bevel=0)
-        middle_holder = loc.middle * creator.create(front_bevel=-5, back_bevel=-5)
-        ring_holder = loc.ring * creator.create(front_bevel=5, back_bevel=-5)
-        pinkie_holder = loc.pinkie * creator.create(front_bevel=0, back_bevel=5)
-
-        index_holder.label = 'index'
-        index2_holder.label = 'index2'
-        middle_holder.label = 'middle'
-        ring_holder.label = 'ring'
-        pinkie_holder.label = 'pinkie'
-
-        yield index_holder
-        yield index2_holder
-        yield middle_holder
-        yield ring_holder
-        yield pinkie_holder
-
 
 class KeyPairHolderCreator:
 
@@ -235,8 +210,16 @@ class KeyPairHolderCreator:
         self._deep = BACK_BORDER + CUT_WIDTH + FRONT_BORDER
         self._thickness = THICKNESS + 2 * tolerance
 
-    def create(self, front_bevel: float=0.0, back_bevel: float=0.0, extra_height: float=0.0) -> Part:
-        block = self._create_block(front_bevel=front_bevel, back_bevel=back_bevel, extra_height=extra_height)
+    def create(self, front_left_bevel: float=0.0, 
+               front_right_bevel: float=0.0, 
+               back_left_bevel: float=0.0, 
+               back_right_bevel: float=0.0, 
+               extra_height: float=0.0) -> Part:
+        block = self._create_block(front_left_bevel=front_left_bevel, 
+                                   front_right_bevel=front_right_bevel,
+                                   back_left_bevel=back_left_bevel,
+                                   back_right_bevel=back_right_bevel,
+                                   extra_height=extra_height)
         hole = self._create_interior(extra_height=extra_height)
         holder = block - hole
         holder = Pos(X=-self._width/2) * holder  # center on x axis
@@ -244,7 +227,21 @@ class KeyPairHolderCreator:
 
         return holder
     
-    def _create_block(self, front_bevel: float, back_bevel: float, extra_height: float) -> Part:
+    def _create_block(self, front_left_bevel: float, 
+                      front_right_bevel: float, 
+                      back_left_bevel: float, 
+                      back_right_bevel: float, 
+                      extra_height: float) -> Part:
+        left_profile_face = self._create_block_profile_face(front_bevel=front_left_bevel, 
+                                                            back_bevel=back_left_bevel, 
+                                                            extra_height=extra_height)
+        right_profile_face = Pos(X=self._width) * self._create_block_profile_face(front_bevel=front_right_bevel, 
+                                                                                  back_bevel=back_right_bevel, 
+                                                                                  extra_height=extra_height)
+
+        return loft(Sketch() + list([left_profile_face, right_profile_face]))
+    
+    def _create_block_profile_face(self, front_bevel: float, back_bevel: float, extra_height: float) -> Sketch:
         """
         order of points:
                z
@@ -272,10 +269,9 @@ class KeyPairHolderCreator:
             (0, 0),
         ]
         right_half = Polyline(points)
-        profile_line = right_half #+ mirror(right_half, Plane.YZ)
+        profile_line = right_half
 
-        profile_face = make_face(Plane.YZ * profile_line)
-        return extrude(profile_face, -self._width).clean()
+        return make_face(Plane.YZ * profile_line)
     
     def _create_interior(self, extra_height: float) -> Part:
         """
