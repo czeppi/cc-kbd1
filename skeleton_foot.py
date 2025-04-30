@@ -43,48 +43,8 @@ def main():
     creator = SkeletonFootCreator()
     foot = creator.create()
 
-    #export_stl(foot, OUTPUT_DPATH / 'skeleton-foot.stl')
+    export_stl(foot, OUTPUT_DPATH / 'skeleton-foot.stl')
     show_object(foot)
-
-
-def test_loft_with_holes1_nok():
-    outer_rect = Rectangle(20, 20)
-    inner_rect = Rectangle(10, 10)
-    face_template = Plane.XY * (outer_rect - inner_rect)
-
-    face1 = Pos(Z=0) * copy.copy(face_template)
-    face2 = Pos(Z=5) * copy.copy(face_template)
-    part = loft([face1, face2])
-    show_object(part)
-
-
-def test_loft_with_holes2_ok():
-    outer_rect = Rectangle(20, 20)
-    inner_rect = Rectangle(10, 10)
-
-    outer_template = Plane.XY * outer_rect
-    inner_template = Plane.XY * inner_rect
-
-    outer_face1 = Pos(Z=0) * copy.copy(outer_template)
-    outer_face2 = Pos(Z=5) * copy.copy(outer_template)
-
-    inner_face1 = Pos(Z=0) * copy.copy(inner_template)
-    inner_face2 = Pos(Z=5) * copy.copy(inner_template)
-
-    outer_loft = loft([outer_face1, outer_face2])
-    inner_loft = loft([inner_face1, inner_face2])
-
-    show_object(outer_loft - inner_loft)
-
-
-def test_loft_with_holes3():
-    outer_rect = Rectangle(20, 20)
-    inner_rect = Rectangle(10, 10)
-
-    face1 = Pos(Z=0) * (outer_rect - inner_rect)
-    face2 = Pos(Z=5) * (outer_rect - inner_rect)
-    part = loft([face1, face2])
-    show_object(part)
 
 
 class SkeletonFootCreator:
@@ -126,21 +86,6 @@ class SkeletonFootCreator:
             for x in (-dx, dx):
                 yield Pos(x, y, 0) * copy.copy(stud_template)
 
-    def _create_slot_old(self) -> Part:
-        slot_profile = self._create_slot_profile()
-        slot_height = self._calc_slot_height()
-        height_plus = 50.0
-
-        rot = Rot(X=SLOT_ANGLE_X) * Rot(Y=SLOT_ANGLE_Y)
-        slot = rot * Pos(Z=-height_plus/2) * extrude(slot_profile, height_plus)
-        slot -= Pos(Z=-50) * Box(100.0, 100.0, 100.0)  # cut bottom
-        slot -= Pos(Z=50 + slot_height) * Box(100.0, 100.0, 100.0)  # cut top
-
-        box = slot.bounding_box()
-        min_x = box.min.X
-        min_y = box.min.Y
-        return Pos(X=-min_x, Y=-min_y) * slot  # move slot in x+/y+ quadrant
-
     def _create_slot(self) -> Part:
         """ !! loft-function does not work with u_profile with hole !!
         """
@@ -154,22 +99,10 @@ class SkeletonFootCreator:
         inner_loft = self._create_slot_loft(inner_u_face)
         outer_loft = self._create_slot_loft(outer_u_face)
 
-        return outer_loft - inner_loft
-
-    def _create_slot_loft(self, slot_profile) -> Part:
-        # s. create_keys_holder123.py#SkeletonCreator.create()
-
-        loc5 = Rot(Y=-15) * Pos(X=-20, Y=-7) * Rot(Z=-30)
-        loc6 = Rot(Y=-15) * Pos(X=20, Y=-12) * Rot(Z=-30)
-
-        u5 = loc5 * copy.copy(slot_profile)
-        u6 = loc6 * copy.copy(slot_profile)
-        slot = loft([u5, u6])
-
         slot_height = self._calc_slot_height()
+        slot = outer_loft - inner_loft
         slot -= Pos(X=-50) * Box(100.0, 100.0, 100.0)  # cut left
         slot -= Pos(X=50 + slot_height) * Box(100.0, 100.0, 100.0)  # cut right
-
         slot = Rot(Z=-90) * Rot(Y=90) * slot
 
         box = slot.bounding_box()
@@ -177,19 +110,7 @@ class SkeletonFootCreator:
         min_y = box.min.Y
         min_z = box.min.Z
         return Pos(X=-min_x, Y=-min_y, Z=-min_z) * slot  # move slot in x+/y+ quadrant
-   
-    def _calc_slot_height(self) -> float:
-        x_rad = math.radians(SLOT_ANGLE_X)
-        y_rad = math.radians(SLOT_ANGLE_Y)
-        return SLOT_LEN * math.cos(x_rad) * math.cos(y_rad)
 
-    def _create_slot_profile(self) -> Sketch:
-        skeleton_u = self._create_skeleton_u_profile()
-        skeleton_u_plus = offset(skeleton_u, FOOT_TOLERANCE, kind=Kind.INTERSECTION)
-        slot_profile = offset(skeleton_u_plus, SKELETON_THICKNESS, kind=Kind.INTERSECTION) - skeleton_u_plus
-
-        return Plane.YZ * slot_profile
-    
     def _create_skeleton_u_profile(self) -> Sketch:
         """
             x x x     x x x
@@ -202,9 +123,24 @@ class SkeletonFootCreator:
                                   height=SKELETON_HEIGHT)
         
         skeleton_hole = Pos(Y=SKELETON_THICKNESS) * Rectangle(width=SKELETON_WIDTH - 2 * SKELETON_THICKNESS, 
-                                                                   height=SKELETON_HEIGHT)
+                                                              height=SKELETON_HEIGHT)
         skeleton_u = skeleton_rect - skeleton_hole
         return skeleton_u
-    
+
+    def _create_slot_loft(self, slot_profile) -> Part:
+        # s. create_keys_holder123.py#SkeletonCreator.create()
+
+        loc5 = Rot(Y=-15) * Pos(X=-20, Y=-7) * Rot(Z=-30)
+        loc6 = Rot(Y=-15) * Pos(X=20, Y=-12) * Rot(Z=-30)
+
+        u5 = loc5 * copy.copy(slot_profile)
+        u6 = loc6 * copy.copy(slot_profile)
+        return loft([u5, u6])
+ 
+    def _calc_slot_height(self) -> float:
+        x_rad = math.radians(SLOT_ANGLE_X)
+        y_rad = math.radians(SLOT_ANGLE_Y)
+        return SLOT_LEN * math.cos(x_rad) * math.cos(y_rad)
+   
 
 main()
