@@ -1,15 +1,13 @@
 import cadquery as cq
 import math
 
-DEGREE = math.pi / 180
-
 r = 2.5
 border = 4
 dx = 9
-dy = dx * math.sin(60 * DEGREE)
+dy = dx * math.sin(60 * math.radians)
 x0 = border + r
 y0 = border + r
-x_offset = dx * math.cos(60 * DEGREE)
+x_offset = dx * math.cos(60 * math.radians)
 
 n = 7
 m = 13

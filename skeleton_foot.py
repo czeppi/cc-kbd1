@@ -1,59 +1,197 @@
 import math
+import copy
+from typing import Iterator
 from pathlib import Path
-from build123d import mirror, extrude, offset, export_stl
-from build123d import Box, Cylinder, Part, Rectangle, Pos, Rot, Kind, Polygon, Plane, Wedge, Axis, RigidJoint, Location, Circle, Align
+from build123d import extrude, offset, export_stl, loft
+from build123d import Box, Cylinder, Part, Rectangle, Pos, Rot, Kind, Sketch, Plane
 from ocp_vscode import show_object
 
 
-TOLERANCE = 0.1
-DEGREE = math.pi / 180
+STUD_TOLERANCE = 0.1
+STUD_RADIUS = 5.0 / 2  # s. base-plate.py
+STUD_HEIGHT = 4.0  # s. base-plate.py
+STUD_DISTANCE = 9.0  # s. base-plate.py
+
+# Y
+# |
+# O     O     O
+# |  O     O
+# O     O     O
+# |  O     O
+# O     O     O
+# |  O     O
+# O-----O-----O---> X
+BASE_MARGIN = 1.0
+BASE_ROWS = 4
+BASE_COLUMNS = 3
+BASE_HEIGHT = 3.0
 
 SKELETON_WIDTH = 18.0
 SKELETON_HEIGHT = 10.0
 SKELETON_THICKNESS = 2.0
 
-SLOT_HEIGHT = 10.0
-FOOT_HEIGHT = 10.0
+FOOT_TOLERANCE = 0.2
+SLOT_LEN = 5.0
 
-STUD_RADIUS = 5.0 / 2 - TOLERANCE
-STUD_HEIGHT = 4.0 - TOLERANCE
-
-HOLDER_ANGLE = 30.0  # degree
+SLOT_ANGLE_X = -15.0  # s. create_keys_holder.py#loc7
+SLOT_ANGLE_Y = 30.0  # s. create_keys_holder.py#loc6
 
 OUTPUT_DPATH = Path('output')
 
 
 def main():
     creator = SkeletonFootCreator()
-    holder = creator.create()
+    foot = creator.create()
 
-    export_stl(holder, OUTPUT_DPATH / 'skeleton-foot.stl')
-    show_object(holder)
+    #export_stl(foot, OUTPUT_DPATH / 'skeleton-foot.stl')
+    show_object(foot)
+
+
+def test_loft_with_holes1_nok():
+    outer_rect = Rectangle(20, 20)
+    inner_rect = Rectangle(10, 10)
+    face_template = Plane.XY * (outer_rect - inner_rect)
+
+    face1 = Pos(Z=0) * copy.copy(face_template)
+    face2 = Pos(Z=5) * copy.copy(face_template)
+    part = loft([face1, face2])
+    show_object(part)
+
+
+def test_loft_with_holes2_ok():
+    outer_rect = Rectangle(20, 20)
+    inner_rect = Rectangle(10, 10)
+
+    outer_template = Plane.XY * outer_rect
+    inner_template = Plane.XY * inner_rect
+
+    outer_face1 = Pos(Z=0) * copy.copy(outer_template)
+    outer_face2 = Pos(Z=5) * copy.copy(outer_template)
+
+    inner_face1 = Pos(Z=0) * copy.copy(inner_template)
+    inner_face2 = Pos(Z=5) * copy.copy(inner_template)
+
+    outer_loft = loft([outer_face1, outer_face2])
+    inner_loft = loft([inner_face1, inner_face2])
+
+    show_object(outer_loft - inner_loft)
+
+
+def test_loft_with_holes3():
+    outer_rect = Rectangle(20, 20)
+    inner_rect = Rectangle(10, 10)
+
+    face1 = Pos(Z=0) * (outer_rect - inner_rect)
+    face2 = Pos(Z=5) * (outer_rect - inner_rect)
+    part = loft([face1, face2])
+    show_object(part)
 
 
 class SkeletonFootCreator:
-    """
-    view from top:
-
-         x x x x x x x x
-         x             x
-         x   x x x x   x
-         x   x     x   x
-         x x x     x x x
-    
-    """
 
     def __init__(self):
         pass
 
     def create(self) -> Part:
-        u_shell = self._create_u_shell()
-        wedge = self._create_wedge()
-        return u_shell + wedge
-
-    def _create_u_shell(self) -> Part:
+        base_plate = self._create_base_plate_with_studs()
+        slot = self._create_slot()
+        #return base_plate + slot
+        return slot
+    
+    def _create_base_plate_with_studs(self) -> Part:
+        """ z == 0 at top of plate
         """
+        margin = BASE_MARGIN + STUD_RADIUS
+        x_len = margin + (BASE_COLUMNS - 1) * STUD_DISTANCE * 2 * math.sin(math.radians(60)) + margin
+        y_len = margin + (BASE_ROWS - 1) * STUD_DISTANCE + margin
+        z_len = BASE_HEIGHT
 
+        plate = Pos(Z=-z_len/2) * Box(x_len, y_len, z_len)
+
+        stud_height = STUD_HEIGHT - STUD_TOLERANCE
+        studs = [Pos(Z=-z_len - stud_height/2) * stud 
+                 for stud in self._iter_studs(x_len=x_len, y_len=y_len)]
+                      
+        return Pos(X=x_len/2, Y=y_len/2) * (plate + studs)
+
+    def _iter_studs(self, x_len: float, y_len: float) -> Iterator[Part]:
+        dx = x_len / 2 - BASE_MARGIN - STUD_RADIUS
+        dy = y_len / 2 - BASE_MARGIN - STUD_RADIUS
+
+        stud_radius = STUD_RADIUS - STUD_TOLERANCE
+        stud_height = STUD_HEIGHT - STUD_TOLERANCE
+        stud_template = Cylinder(radius=stud_radius, height=stud_height)
+
+        for y in (-dy, dy):
+            for x in (-dx, dx):
+                yield Pos(x, y, 0) * copy.copy(stud_template)
+
+    def _create_slot_old(self) -> Part:
+        slot_profile = self._create_slot_profile()
+        slot_height = self._calc_slot_height()
+        height_plus = 50.0
+
+        rot = Rot(X=SLOT_ANGLE_X) * Rot(Y=SLOT_ANGLE_Y)
+        slot = rot * Pos(Z=-height_plus/2) * extrude(slot_profile, height_plus)
+        slot -= Pos(Z=-50) * Box(100.0, 100.0, 100.0)  # cut bottom
+        slot -= Pos(Z=50 + slot_height) * Box(100.0, 100.0, 100.0)  # cut top
+
+        box = slot.bounding_box()
+        min_x = box.min.X
+        min_y = box.min.Y
+        return Pos(X=-min_x, Y=-min_y) * slot  # move slot in x+/y+ quadrant
+
+    def _create_slot(self) -> Part:
+        """ !! loft-function does not work with u_profile with hole !!
+        """
+        skeleton_u = self._create_skeleton_u_profile()
+        inner_u_profile = offset(skeleton_u, FOOT_TOLERANCE, kind=Kind.INTERSECTION)
+        outer_u_profile = offset(inner_u_profile, SKELETON_THICKNESS, kind=Kind.INTERSECTION)
+
+        inner_u_face = Plane.YZ * inner_u_profile
+        outer_u_face = Plane.YZ * outer_u_profile
+
+        inner_loft = self._create_slot_loft(inner_u_face)
+        outer_loft = self._create_slot_loft(outer_u_face)
+
+        return outer_loft - inner_loft
+
+    def _create_slot_loft(self, slot_profile) -> Part:
+        # s. create_keys_holder123.py#SkeletonCreator.create()
+
+        loc5 = Rot(Y=-15) * Pos(X=-20, Y=-7) * Rot(Z=-30)
+        loc6 = Rot(Y=-15) * Pos(X=20, Y=-12) * Rot(Z=-30)
+
+        u5 = loc5 * copy.copy(slot_profile)
+        u6 = loc6 * copy.copy(slot_profile)
+        slot = loft([u5, u6])
+
+        slot_height = self._calc_slot_height()
+        slot -= Pos(X=-50) * Box(100.0, 100.0, 100.0)  # cut left
+        slot -= Pos(X=50 + slot_height) * Box(100.0, 100.0, 100.0)  # cut right
+
+        slot = Rot(Z=-90) * Rot(Y=90) * slot
+
+        box = slot.bounding_box()
+        min_x = box.min.X
+        min_y = box.min.Y
+        min_z = box.min.Z
+        return Pos(X=-min_x, Y=-min_y, Z=-min_z) * slot  # move slot in x+/y+ quadrant
+   
+    def _calc_slot_height(self) -> float:
+        x_rad = math.radians(SLOT_ANGLE_X)
+        y_rad = math.radians(SLOT_ANGLE_Y)
+        return SLOT_LEN * math.cos(x_rad) * math.cos(y_rad)
+
+    def _create_slot_profile(self) -> Sketch:
+        skeleton_u = self._create_skeleton_u_profile()
+        skeleton_u_plus = offset(skeleton_u, FOOT_TOLERANCE, kind=Kind.INTERSECTION)
+        slot_profile = offset(skeleton_u_plus, SKELETON_THICKNESS, kind=Kind.INTERSECTION) - skeleton_u_plus
+
+        return Plane.YZ * slot_profile
+    
+    def _create_skeleton_u_profile(self) -> Sketch:
+        """
             x x x     x x x
             x   x     x   x
             x   x x x x   x
@@ -63,62 +201,10 @@ class SkeletonFootCreator:
         skeleton_rect = Rectangle(width=SKELETON_WIDTH, 
                                   height=SKELETON_HEIGHT)
         
-        skeleton_hole = Pos(Y=SKELETON_THICKNESS / 2) * Rectangle(width=SKELETON_WIDTH - 2 * SKELETON_THICKNESS, 
-                                                                  height=SKELETON_HEIGHT - SKELETON_THICKNESS)
+        skeleton_hole = Pos(Y=SKELETON_THICKNESS) * Rectangle(width=SKELETON_WIDTH - 2 * SKELETON_THICKNESS, 
+                                                                   height=SKELETON_HEIGHT)
         skeleton_u = skeleton_rect - skeleton_hole
-        skeleton_u_plus = offset(skeleton_u, TOLERANCE, kind=Kind.INTERSECTION)
-        skeleton_shell = offset(skeleton_u_plus, SKELETON_THICKNESS, kind=Kind.INTERSECTION) - skeleton_u_plus
-
-        return extrude(skeleton_shell, SLOT_HEIGHT)
-
-    def _create_wedge(self):
-        """
-             /
-            /     /
-           /_____/   
-            |__|   <- stud
-
-          HOLDER_ANGLE: angle of holder
-          FOOT_HEIGHT:  from top of stud till mid of slope
-
-          rotate =>
-           
-           y
-           |
-           | 
-           |----   
-           |    *
-           |     *
-           -------*---> x
-
-        """
-        y_len = SKELETON_WIDTH + 2 * TOLERANCE + 2 * SKELETON_THICKNESS
-        z_len = SKELETON_HEIGHT + 2 * TOLERANCE + 2 * SKELETON_THICKNESS
-
-        angle_rad = math.radians(HOLDER_ANGLE)
-        
-        x_mid_len = FOOT_HEIGHT / math.cos(angle_rad)
-        x_delta = math.tan(angle_rad) * y_len / 2
-        x_button = x_mid_len + x_delta
-        x_top = x_mid_len - x_delta
-         
-        wedge = Wedge(x_button, y_len, z_len, xmin=0, xmax=x_top, zmin=0, zmax=z_len)
-        wedge_slope_face = wedge.faces().sort_by(Axis.X).last
-
-        wedge_slope_center = wedge_slope_face.center()
-        wedge_slope_normal = wedge_slope_face.normal_at(wedge_slope_center)
-
-        slope_plane = Plane(origin=wedge_slope_center, 
-                            z_dir=wedge_slope_normal)
-
-        stud = slope_plane * Cylinder(radius=STUD_RADIUS, height=STUD_HEIGHT, align=[Align.CENTER, Align.CENTER, Align.MIN])
-        rotated_wedge = Rot(X=-90) * Rot(Z=90) * (wedge + stud)
-        box = rotated_wedge.bounding_box()
-        return Pos(Z=-box.max.Z) * rotated_wedge
-
-    def _create_stud(self) -> Part:
-        stud = Cylinder(radius=STUD_RADIUS, height=STUD_HEIGHT)
-        return stud
-
+        return skeleton_u
+    
 
 main()
