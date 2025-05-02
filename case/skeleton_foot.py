@@ -7,7 +7,7 @@ from build123d import offset, export_stl, loft
 from build123d import Box, Cylinder, Part, Rectangle, Pos, Rot, Kind, Sketch, Plane, Align
 from ocp_vscode import show_object
 
-from base import STUD_DISTANCE, STUD_HEIGHT, STUD_RADIUS
+from base import STUD_DISTANCE, STUD_HEIGHT, STUD_RADIUS, OUTPUT_DPATH
 
 
 STUD_TOLERANCE = 0.1
@@ -37,8 +37,6 @@ SLOT_LEN = 6.0
 SLOT_ANGLE_X = -15.0  # s. create_keys_holder.py#loc7
 SLOT_ANGLE_Y = 30.0  # s. create_keys_holder.py#loc6
 SLOT_ANGLE_Z = -45.0
-
-OUTPUT_DPATH = Path('output')
 
 
 def main():
