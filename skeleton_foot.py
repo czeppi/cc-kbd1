@@ -1,3 +1,4 @@
+
 import math
 import copy
 from typing import Iterator
@@ -6,11 +7,11 @@ from build123d import offset, export_stl, loft
 from build123d import Box, Cylinder, Part, Rectangle, Pos, Rot, Kind, Sketch, Plane, Align
 from ocp_vscode import show_object
 
+from base import STUD_DISTANCE, STUD_HEIGHT, STUD_RADIUS
+
 
 STUD_TOLERANCE = 0.1
-STUD_RADIUS = 5.0 / 2  # s. base-plate.py
-STUD_HEIGHT = 4.0  # s. base-plate.py
-STUD_DISTANCE = 9.0  # s. base-plate.py
+
 
 # Y
 # |
