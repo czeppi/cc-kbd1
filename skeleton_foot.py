@@ -2,8 +2,8 @@ import math
 import copy
 from typing import Iterator
 from pathlib import Path
-from build123d import extrude, offset, export_stl, loft
-from build123d import Box, Cylinder, Part, Rectangle, Pos, Rot, Kind, Sketch, Plane
+from build123d import offset, export_stl, loft
+from build123d import Box, Cylinder, Part, Rectangle, Pos, Rot, Kind, Sketch, Plane, Align
 from ocp_vscode import show_object
 
 
@@ -30,8 +30,8 @@ SKELETON_WIDTH = 18.0
 SKELETON_HEIGHT = 10.0
 SKELETON_THICKNESS = 2.0
 
-FOOT_TOLERANCE = 0.2
-SLOT_LEN = 5.0
+FOOT_TOLERANCE = 0.1
+SLOT_LEN = 6.0
 
 SLOT_ANGLE_X = -15.0  # s. create_keys_holder.py#loc7
 SLOT_ANGLE_Y = 30.0  # s. create_keys_holder.py#loc6
@@ -54,8 +54,10 @@ class SkeletonFootCreator:
 
     def create(self) -> Part:
         base_plate = self._create_base_plate_with_studs()
+        #d = 2 * SKELETON_THICKNESS + 2 * FOOT_TOLERANCE + 1
+        #base_plate = Box(SKELETON_WIDTH + d, SKELETON_HEIGHT + d, 1.0, align=(Align.MIN, Align.MIN, Align.MAX))
         slot = self._create_slot()
-        #return base_plate + slot
+        return base_plate + slot
         return slot
     
     def _create_base_plate_with_studs(self) -> Part:
@@ -130,8 +132,17 @@ class SkeletonFootCreator:
     def _create_slot_loft(self, slot_profile) -> Part:
         # s. create_keys_holder123.py#SkeletonCreator.create()
 
-        loc5 = Rot(Y=-15) * Pos(X=-20, Y=-7) * Rot(Z=-30)
-        loc6 = Rot(Y=-15) * Pos(X=20, Y=-12) * Rot(Z=-30)
+        shift_x = 20  # s. create_keys_hoolder
+        shift_y = -5  # s. create_keys_hoolder
+        shift_factor = shift_y / shift_x  
+
+        x_min = -20
+        x_max = 20
+        dx = x_max - x_min
+        dy = shift_factor * dx
+
+        loc5 = Rot(Y=SLOT_ANGLE_X) * Pos(X=x_min, Y=0) * Rot(Z=-SLOT_ANGLE_Y)
+        loc6 = Rot(Y=SLOT_ANGLE_X) * Pos(X=x_max, Y=dy) * Rot(Z=-SLOT_ANGLE_Y)  
 
         u5 = loc5 * copy.copy(slot_profile)
         u6 = loc6 * copy.copy(slot_profile)
