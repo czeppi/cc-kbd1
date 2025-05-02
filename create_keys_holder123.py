@@ -98,7 +98,8 @@ class SkeletonCreator:
         loc3 = loc.ring  * Pos(Y=-2) * Rot(Z=-20)
         loc4 = loc.pinkie * Pos(X=-holder_dx/2, Y=8) * Rot(Z=-25)
         loc5 = loc.pinkie * Pos(X=holder_dx/2+5, Y=-7) * Rot(Z=-30)
-        loc6 = loc.pinkie * Pos(X=holder_dx/2+15, Y=-12) * Rot(Z=-30)
+        loc6 = loc.pinkie * Pos(X=holder_dx/2+25, Y=-12) * Rot(Z=-30)
+        loc7 = loc.pinkie * Pos(X=holder_dx/2+19, Y=-12) * Rot(Y=15)
 
         u1 = loc1 * copy.copy(u_profile)
         u2 = loc2 * copy.copy(u_profile)
@@ -117,30 +118,11 @@ class SkeletonCreator:
         cylinder2 = loc2 * copy.copy(cylinder)
         cylinder3 = loc3 * copy.copy(cylinder)
 
-        skeleton = loft1 + loft2 + loft3 - cylinder1 - cylinder2 - cylinder3
+        neg_foot_box = loc7 * Pos(X=15, Z=-10) * Box(30, 30, 30)
+
+        skeleton = loft1 + loft2 + loft3 - cylinder1 - cylinder2 - cylinder3 - neg_foot_box
         skeleton.label = 'skeleton'
         return skeleton
-
-    def create_old(self) -> Part:
-        faces = Sketch() + list(self._iter_u_profiles())
-        return loft(faces)
-
-    def _iter_u_profiles(self) -> Iterator[Sketch]:
-        loc = KeyPairHolderFingerLocations()
-        u_profile = self._create_u_profile()
-
-        holder_dx = LEFT_RIGHT_BORDER + CUT_WIDTH + LEFT_RIGHT_BORDER
-
-        #yield loc.index2 * Pos(X=-holder_dx/2 - 5, Y=-5) * copy.copy(u_profile)
-        #yield Pos(Y=0) * copy.copy(u_profile)
-        #yield loc.middle * Pos(Y=0) * copy.copy(u_profile)
-        #yield loc.ring * Pos(X=holder_dx/2, Y=-5) * copy.copy(u_profile)
-        #yield loc.pinkie * Pos(X=-holder_dx/2, Y=5) * copy.copy(u_profile)
-        #yield loc.pinkie * Pos(X=holder_dx/2, Y=-5) * copy.copy(u_profile)
-
-        yield loc.index2 * Pos(X=-holder_dx/2 - 5, Y=-5) * copy.copy(u_profile)
-        yield loc.ring  * Pos(X=holder_dx/2, Y=-5) * copy.copy(u_profile)
-        yield loc.pinkie * Pos(X=holder_dx/2+5, Y=-5) * Rot(Z=-30) * copy.copy(u_profile)
 
     def _create_u_profile(self) -> BaseSketchObject:
         width = SKELETON_WIDTH + 2 * self._tolerance
