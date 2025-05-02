@@ -36,6 +36,7 @@ SLOT_LEN = 6.0
 
 SLOT_ANGLE_X = -15.0  # s. create_keys_holder.py#loc7
 SLOT_ANGLE_Y = 30.0  # s. create_keys_holder.py#loc6
+SLOT_ANGLE_Z = -45.0
 
 OUTPUT_DPATH = Path('output')
 
@@ -55,11 +56,9 @@ class SkeletonFootCreator:
 
     def create(self) -> Part:
         base_plate = self._create_base_plate_with_studs()
-        #d = 2 * SKELETON_THICKNESS + 2 * FOOT_TOLERANCE + 1
-        #base_plate = Box(SKELETON_WIDTH + d, SKELETON_HEIGHT + d, 1.0, align=(Align.MIN, Align.MIN, Align.MAX))
         slot = self._create_slot()
         return base_plate + slot
-        return slot
+
     
     def _create_base_plate_with_studs(self) -> Part:
         """ z == 0 at top of plate
@@ -107,6 +106,7 @@ class SkeletonFootCreator:
         slot -= Pos(X=-50) * Box(100.0, 100.0, 100.0)  # cut left
         slot -= Pos(X=50 + slot_height) * Box(100.0, 100.0, 100.0)  # cut right
         slot = Rot(Z=-90) * Rot(Y=90) * slot
+        slot = Rot(Z=SLOT_ANGLE_Z) * slot
 
         box = slot.bounding_box()
         min_x = box.min.X
