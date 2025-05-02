@@ -1,12 +1,6 @@
 /.idea
+/#venv
 /archive
-/create_keys_holder-v1.py
-/loft-test1.py
-/loft-test2.py
-/loft-test3.py
-/loft-test4.py
-/loft-test5.py
 /fotos
-/venv-build123d2
-/*.stl
 /output
+/*.stl
