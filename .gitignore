@@ -3,7 +3,7 @@ __pycache__
 /#misc
 complete_finger_part
 case/#venv
-case/archive
-case/fotos
-case/output
-case/*.stl
+case/#archive
+case/#fotos
+case/#output
+
