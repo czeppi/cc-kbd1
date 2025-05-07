@@ -451,4 +451,5 @@ class KeyPairHolderSwinger:
         return Rot(X=TILT_ANGLE) * Pos(Y=self._dy)
 
 
-main()
+if __name__ == '__main__':
+    main()

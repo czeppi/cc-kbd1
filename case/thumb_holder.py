@@ -1,31 +1,39 @@
 import math
 from typing import Iterator
-from build123d import offset, export_stl, loft, make_face, extrude
-from build123d import Box, Cylinder, Part, Rectangle, Pos, Rot, Sketch, Plane, Align, Polyline
+from build123d import offset, export_stl, loft, make_face, extrude, chamfer, fillet
+from build123d import Box, Cylinder, Part, Rectangle, Pos, Rot, Sketch, Plane, Align, Polyline, Axis, GeomType
 from ocp_vscode import show_object
 
-from base import STUD_HEIGHT, STUD_RADIUS, TOLERANCE, OUTPUT_DPATH
+from base import STUD_HEIGHT, STUD_RADIUS, STUD_DISTANCE, STUD_CHAMFER_LEN, TOLERANCE, OUTPUT_DPATH
 
 
-SLOT_LEN = 3.0
+SLOT_LEN = 2.0
 EPS = 0.01
+
+STUD_DISTANCE_X = STUD_DISTANCE
+STUD_DISTANCE_Y = math.sin(math.radians(60)) * STUD_DISTANCE * 2
 
 
 def main():
-    #creator = ThumbFootCreator()
-    creator = ThumbMiddlePartCreator()
-    foot = creator.create()
-    show_object(foot)
+    foot_creator = ThumbFootCreator()
+    foot = foot_creator.create()
+    export_stl(foot, OUTPUT_DPATH / 'thumb-foot.stl')
+
+    middle_creator = ThumbMiddlePartCreator()
+    middle_part = middle_creator.create()
+    export_stl(middle_part, OUTPUT_DPATH / 'thumb-middle-part.stl')
+
+    show_object(middle_part)
 
 
 class ThumbFootCreator:
-    STUD_DIST = 30.0  # from center to center
+    STUD_DIST = 2 * STUD_DISTANCE_Y  # from center to center
     PLATE_X_LEN = 10.0
     PLATE_HEIGHT = 2.0
     Y_MARGIN = 5.0
     COMB_THICKNESS = 2.0
-    COMB_HEIGHT = 6.0
-    COMB_X_OFFSET = 0.0  # from center
+    COMB_HEIGHT = 2 * SLOT_LEN
+    COMB_X_OFFSET = 2.0  # from center
     COMB_SLOT_Y_OFFSET = 0.0  # from center
 
     def __init__(self):
@@ -38,7 +46,6 @@ class ThumbFootCreator:
         stud2 = self._create_stud(y=self.STUD_DIST/2)
         comb = self._create_comb()
         foot = base_plate + stud1 + stud2 + comb
-        #export_stl(foot, OUTPUT_DPATH / 'thumb-foot.stl')
         return foot
 
     def _create_base_plate(self) -> Part:
@@ -53,7 +60,10 @@ class ThumbFootCreator:
         stud_radius = STUD_RADIUS - TOLERANCE
         stud_height = STUD_HEIGHT - TOLERANCE
         z = -stud_height/2 - self.PLATE_HEIGHT
-        return Pos(Y=y, Z=z) * Cylinder(radius=stud_radius, height=stud_height)
+        stud = Pos(Y=y, Z=z) * Cylinder(radius=stud_radius, height=stud_height)
+
+        bottom_edge = stud.edges().sort_by(Axis.Z).first
+        return chamfer(bottom_edge, length=STUD_CHAMFER_LEN)
     
     def _create_comb(self) -> Part:
         x_len = self.COMB_THICKNESS
@@ -61,7 +71,7 @@ class ThumbFootCreator:
         h = self.COMB_HEIGHT
         comb = Pos(X=self.COMB_X_OFFSET, Z=h/2) * Box(x_len, y_len, h)
 
-        slots_dist = ThumbMiddlePartCreator.y_LEN - ThumbMiddlePartCreator.THICKNESS
+        slots_dist = ThumbMiddlePartCreator.Y_LEN - ThumbMiddlePartCreator.THICKNESS
 
         slot_y1 = -slots_dist / 2 + self.COMB_SLOT_Y_OFFSET
         slot_y2 = slots_dist / 2 + self.COMB_SLOT_Y_OFFSET
@@ -76,14 +86,53 @@ class ThumbFootCreator:
 
 class ThumbMiddlePartCreator:
     THICKNESS = 2.0
-    y_LEN = 20.0
-    X_LEN1 = 30.0
-    X_LEN2 = 30.0
-    PROFILE_Z1 = 30.0
-    PROFILE_Z2 = 40.0
-    PROFILE_Z3 = 20.0
-    PROFILE_Z4 = 30.0
+    Y_LEN = 32.0
+    X_LEN2 = 48.0
+    ANGLE1 = 40.0  # from point 1 -> point 2
+    ANGLE2 = 10.0  # from point 3 -> point 4
+    PROFILE_Z12 = 45.0
+    PROFILE_Z34 = 25.0
+    KEY_HOLDER_THICKNESS = 2.0  # s. keysholder.py
+    KEY_HOLDER_WIDTH = 20.0  # s. keysholder.py
+    TRACKBALL_SLOTS_DIST = 18.0  # from center to center
+    TRACKBALL_CONN_THICKNESS = 2.0  # s. trackball_conn.py
+    THUMB_FOOT_DIST = 5 * STUD_DISTANCE_X  # from center to center of comb
 
+    @property
+    def X_LEN1(self) -> float:
+        right_margin = 2.0
+        sin1 = math.sin(math.radians(self.ANGLE1))
+        cos1 = math.cos(math.radians(self.ANGLE1))
+        return self.THICKNESS + (self.KEY_HOLDER_WIDTH + 2 * TOLERANCE) * cos1 + SLOT_LEN * sin1 + right_margin        
+
+    @property
+    def PROFILE_Z1(self) -> float:
+        dx = self.X_LEN1
+        tan1 = math.tan(math.radians(self.ANGLE1))
+
+        return self.PROFILE_Z12 - dx / 2 * tan1
+
+    @property
+    def PROFILE_Z2(self) -> float:
+        dx = self.X_LEN1
+        tan1 = math.tan(math.radians(self.ANGLE1))
+        
+        return self.PROFILE_Z12 + dx / 2 * tan1
+
+    @property
+    def PROFILE_Z3(self) -> float:
+        dx = self.X_LEN2
+        tan2 = math.tan(math.radians(self.ANGLE2))
+
+        return self.PROFILE_Z34 - dx / 2 * tan2
+
+    @property
+    def PROFILE_Z4(self) -> float:
+        dx = self.X_LEN2
+        tan2 = math.tan(math.radians(self.ANGLE2))
+        
+        return self.PROFILE_Z34 + dx / 2 * tan2
+    
     def create(self) -> Part:
         body = self._create_body()
         for slot in self._iter_create_bottom_slots():
@@ -96,15 +145,16 @@ class ThumbMiddlePartCreator:
     
     def _create_body(self) -> Part:
         profile = self._create_profile()
-        body = extrude(profile, self.y_LEN)
+        body = extrude(profile, self.Y_LEN)
 
-        dx1 = self.X_LEN1 - 2 * self.THICKNESS
-        dx2 = self.X_LEN2 - self.THICKNESS
-        dy = self.y_LEN - 2 * self.THICKNESS
-        dz = 100.0
+        print(f'x_len={self.X_LEN1}')
+        dx1 = self.X_LEN1 - self.THICKNESS
+        dx2 = self.X_LEN2 - 2 * self.THICKNESS
+        dy = self.Y_LEN - 2 * self.THICKNESS
+        dz = 200.0
 
         x01 = self.THICKNESS + dx1/2
-        x02 = self.X_LEN1 + dx2/2
+        x02 = self.X_LEN1 + self.THICKNESS + dx2/2
         y0 = self.THICKNESS + dy/2
         body -= Pos(X=x01, Y=y0) * Box(dx1, dy, dz)
         body -= Pos(X=x02, Y=y0) * Box(dx2, dy, dz)
@@ -138,59 +188,54 @@ class ThumbMiddlePartCreator:
         return make_face(Plane.XZ * profile_line)
     
     def _iter_create_bottom_slots(self) -> Iterator[Part]:
-        feet_dist = 50  # from center of comb to center of comb
+        feet_dist = self.THUMB_FOOT_DIST  # from center of comb to center of comb
 
         x0 = (self.X_LEN1 + self.X_LEN2 - feet_dist) / 2
         dx = ThumbFootCreator.COMB_THICKNESS + 2 * TOLERANCE
         dz = SLOT_LEN + EPS
 
-        yield Pos(X=x0, Z=-dz/2 + SLOT_LEN) * Box(dx, 100.0, dz)
-        yield Pos(X=x0 + feet_dist, Z=-dz/2 + SLOT_LEN) * Box(dx, 100.0, dz)
+        yield Pos(X=x0) * Box(dx, 100.0, 2 + SLOT_LEN)
+        yield Pos(X=x0 + feet_dist) * Box(dx, 100.0, 2 + SLOT_LEN)
 
     def _iter_thumb_keys_slots(self) -> Iterator[Part]:
-        key_holder_width = 20.0
-        key_holder_thickness = 2.0
+        cos1 = math.cos(math.radians(self.ANGLE1))
+        tan1 = math.tan(math.radians(self.ANGLE1))
 
-        slots_dist = key_holder_width - key_holder_thickness  # from center to center
-        slot_x1 = (self.X_LEN1 - slots_dist) / 2
-        slot_x2 = slot_x1 + slots_dist
+        slots_dist = self.KEY_HOLDER_WIDTH - self.KEY_HOLDER_THICKNESS  # from center to center
 
-        dx = key_holder_thickness + 2 * TOLERANCE
-        dz = SLOT_LEN + EPS
-        z_mean = (self.PROFILE_Z1 + self.PROFILE_Z2) / 2
-
+        dx = self.KEY_HOLDER_THICKNESS + 2 * TOLERANCE
         y_angle = self._calc_y_angle_in_degree(dx=self.X_LEN1, dz=self.PROFILE_Z2 - self.PROFILE_Z1)
 
-        for slot_x in [slot_x1, slot_x2]:
-            yield Pos(X=self.X_LEN1/2, Z=z_mean) \
-                * Rot(Y=y_angle) \
-                * Pos(X=slot_x - self.X_LEN1/2, Z=-dz/2) \
-                * Box(dx, 100.0, dz)
+        x_off = self.THICKNESS + (self.KEY_HOLDER_WIDTH / 2 + TOLERANCE) * cos1
+        z_off = self.PROFILE_Z1 + x_off * tan1
+
+        for slot_x in [-slots_dist/2, slots_dist/2]:
+
+            yield Pos(X=x_off, Z=z_off) \
+                * Rot(Y=-y_angle) \
+                * Pos(X=slot_x) \
+                * Box(dx, 100.0, 2 * SLOT_LEN)
 
     def _iter_trackball_slots(self) -> Iterator[Part]:
-        trackball_width = 20.0
-        trackball_holder_thickness = 2.0
-
-        slots_dist = trackball_width - trackball_holder_thickness  # from center to center
+        slots_dist = self.TRACKBALL_SLOTS_DIST  # from center to center
         slot_x1 = (self.X_LEN2 - slots_dist) / 2
         slot_x2 = slot_x1 + slots_dist
 
-        dx = trackball_holder_thickness + 2 * TOLERANCE
-        dz = SLOT_LEN + EPS
+        dx = self.TRACKBALL_CONN_THICKNESS + 2 * TOLERANCE
         z_mean = (self.PROFILE_Z3 + self.PROFILE_Z4) / 2
 
         y_angle = self._calc_y_angle_in_degree(dx=self.X_LEN2, dz=self.PROFILE_Z4 - self.PROFILE_Z3)
 
         for slot_x in [slot_x1, slot_x2]:
             yield Pos(X=self.X_LEN1 + self.X_LEN2/2, Z=z_mean) \
-                * Rot(Y=y_angle) \
-                * Pos(X=slot_x - self.X_LEN2/2, Z=-dz/2) \
-                * Box(dx, 100.0, dz)
+                * Rot(Y=-y_angle) \
+                * Pos(X=slot_x - self.X_LEN2/2) \
+                * Box(dx, 100.0, 2 * SLOT_LEN)
 
 
     def _calc_y_angle_in_degree(self, dx: float, dz: float) -> float:
-        return math.degrees(math.atan(-dz / dx))
+        return math.degrees(math.atan(dz / dx))
 
 
-
-main()
+if __name__ == '__main__':
+    main()

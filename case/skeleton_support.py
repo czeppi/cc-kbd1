@@ -71,5 +71,5 @@ class SkeletonSupportCreator:
         return Pos(X=x_offset) * Cylinder(radius=STUD_RADIUS, height=STUD_HEIGHT, align=(Align.CENTER, Align.CENTER, Align.MAX))
 
 
-
-main()
+if __name__ == '__main__':
+    main()

@@ -3,11 +3,11 @@ import math
 import copy
 from typing import Iterator
 from pathlib import Path
-from build123d import offset, export_stl, loft
-from build123d import Box, Cylinder, Part, Rectangle, Pos, Rot, Kind, Sketch, Plane, Align
+from build123d import offset, export_stl, loft, chamfer
+from build123d import Box, Cylinder, Part, Rectangle, Pos, Rot, Kind, Sketch, Plane, Axis
 from ocp_vscode import show_object
 
-from base import STUD_DISTANCE, STUD_HEIGHT, STUD_RADIUS, OUTPUT_DPATH
+from base import STUD_DISTANCE, STUD_HEIGHT, STUD_RADIUS, STUD_CHAMFER_LEN, OUTPUT_DPATH
 
 
 STUD_TOLERANCE = 0.1
@@ -80,7 +80,10 @@ class SkeletonFootCreator:
 
         stud_radius = STUD_RADIUS - STUD_TOLERANCE
         stud_height = STUD_HEIGHT - STUD_TOLERANCE
+        
         stud_template = Cylinder(radius=stud_radius, height=stud_height)
+        bottom_edge = stud_template.edges().sort_by(Axis.Z).first
+        stud_template = chamfer(bottom_edge, length=STUD_CHAMFER_LEN)
 
         for y in (-dy, dy):
             for x in (-dx, dx):
@@ -153,4 +156,5 @@ class SkeletonFootCreator:
         return SLOT_LEN * math.cos(x_rad) * math.cos(y_rad)
    
 
-main()
+if __name__ == '__main__':
+    main()
