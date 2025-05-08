@@ -6,7 +6,7 @@ from ocp_vscode import show_object
 from base import TOLERANCE, OUTPUT_DPATH
 from trackball_holder import TrackballHolderCreator
 from thumb_holder import ThumbMiddlePartCreator
-from thumb_holder import SLOT_LEN as THUMB_HOLDER_SLOT_LEN
+from thumb_base import THICKNESS, SLOT_LEN
 
 
 EPS = 1E-3
@@ -20,55 +20,59 @@ def main():
 
 
 class TrackballConnCreator:
-    MARGIN = 1.0
-    EXTRA_HEIGHT = 2.0
+    MARGIN = 3.0
+    EXTRA_TOP_HEIGHT = 0.0
+    EXTRA_BOTTOM_HEIGHT = 0.0
+    X_TOP_OFFSET = 0.0  # top_center - bottom_center
 
     def create(self) -> Part:
-        thickness = TrackballHolderCreator.THICKNESS
-        margin = self.MARGIN
+        """
+        view from front (in y+ direction):
 
-        box_x_len = TrackballHolderCreator.SLOT_DIST + thickness
-        box_y_len = max(ThumbMiddlePartCreator.Y_LEN, TrackballHolderCreator.BOTTOM_PLATE_Y_LEN) + 2 * (margin + thickness)
-        box_height = 2 * TrackballHolderCreator.SLOT_LEN + 2 * THUMB_HOLDER_SLOT_LEN + self.EXTRA_HEIGHT
-        frame = Box(box_x_len, box_y_len, box_height) - Box(box_x_len - 2 * thickness, box_y_len - 2 * thickness, 100.0)
+        *     *
+        *******  <- center: z==0
+         *   *
 
-        frame = Pos(Z=-box_height/2) * frame
-        frame = self._cut_top_slots(frame)
+        """
+        y_len = max(TrackballHolderCreator.BOTTOM_PLATE_Y_LEN, TrackballHolderCreator.SLOT_DIST) + 2 * self.MARGIN
+        slot_width = THICKNESS + 2 * TOLERANCE
 
-        frame = Pos(Z=box_height) * frame
-        frame = self._cut_bottom_slots(frame)
-        
-        return frame
-    
-    def _cut_top_slots(self, frame: Part) -> Part:
-        slot = self._create_top_slot()
+        top_comb_height =  2 * SLOT_LEN + self.EXTRA_TOP_HEIGHT
+        top_combs_dist = TrackballHolderCreator.SLOT_DIST
+        top_comb1_x = -top_combs_dist/2 + self.X_TOP_OFFSET
+        top_comb2_x = top_combs_dist/2 + self.X_TOP_OFFSET
 
-        y_off = (TrackballHolderCreator.BOTTOM_PLATE_Y_LEN - TrackballHolderCreator.THICKNESS) / 2
-        frame -= Pos(Y=y_off) * copy.copy(slot)
-        frame -= Pos(Y=-y_off) * copy.copy(slot)
-        return frame
+        top_comb = Pos(Z=top_comb_height/2 + THICKNESS/2) * Box(THICKNESS, y_len, top_comb_height)
+        top_comb1 = Pos(X=top_comb1_x) * copy.copy(top_comb)
+        top_comb2 = Pos(X=top_comb2_x) * copy.copy(top_comb)
 
-    def _create_top_slot(self) -> Part:
-        slot_len = TrackballHolderCreator.SLOT_LEN
-        slot_width = TrackballHolderCreator.THICKNESS + 2 * TOLERANCE
+        top_slots_dist = TrackballHolderCreator.BOTTOM_PLATE_Y_LEN - THICKNESS
+        top_slot = Pos(Z=THICKNESS/2 + top_comb_height - SLOT_LEN/2) * Box(100.0, slot_width, SLOT_LEN)
+        top_slot1 = Pos(Y=-top_slots_dist/2) * copy.copy(top_slot)
+        top_slot2 = Pos(Y=top_slots_dist/2) * copy.copy(top_slot)
 
-        slot_box = Pos(Z=-slot_len/2) * Box(100.0, slot_width, slot_len)
-        return slot_box
-    
-    def _cut_bottom_slots(self, frame: Part) -> Part:
-        slot = self._create_bottom_slot()
+        bottom_comb_height =  2 * SLOT_LEN + self.EXTRA_BOTTOM_HEIGHT
+        bottom_combs_dist = ThumbMiddlePartCreator.TRACKBALL_SLOTS_DIST
+        bottom_comb1_x = -bottom_combs_dist/2
+        bottom_comb2_x = bottom_combs_dist/2
 
-        y_off = (ThumbMiddlePartCreator.Y_LEN - ThumbMiddlePartCreator.THICKNESS) / 2
-        frame -= Pos(Y=y_off) * copy.copy(slot)
-        frame -= Pos(Y=-y_off) * copy.copy(slot)
-        return frame
-    
-    def _create_bottom_slot(self) -> Part:
-        slot_len = THUMB_HOLDER_SLOT_LEN
-        slot_width = ThumbMiddlePartCreator.THICKNESS + 2 * TOLERANCE
-        
-        slot_box = Pos(Z=slot_len/2) * Box(100.0, slot_width, slot_len)
-        return slot_box
+        bottom_comb = Pos(Z=-THICKNESS/2 - bottom_comb_height/2) * Box(THICKNESS, y_len, bottom_comb_height)
+        bottom_comb1 = Pos(X=bottom_comb1_x) * copy.copy(bottom_comb)
+        bottom_comb2 = Pos(X=bottom_comb2_x) * copy.copy(bottom_comb)
+
+        bottom_slots_dist = ThumbMiddlePartCreator.Y_LEN - THICKNESS
+        bottom_slot = Pos(Z=-THICKNESS/2 - bottom_comb_height + SLOT_LEN/2) * Box(100.0, slot_width, SLOT_LEN)
+        bottom_slot1 = Pos(Y=-bottom_slots_dist/2) * copy.copy(bottom_slot)
+        bottom_slot2 = Pos(Y=bottom_slots_dist/2) * copy.copy(bottom_slot)
+
+        center_x_left = min(top_comb1_x, bottom_comb1_x) - THICKNESS / 2
+        center_x_right = max(top_comb2_x, bottom_comb2_x) + THICKNESS / 2
+        center_x_offset = (center_x_left + center_x_right) / 2
+
+        center_x_len = center_x_right - center_x_left
+        center_plate = Pos(X=center_x_offset) * Box(center_x_len, y_len, THICKNESS)
+
+        return Part() + [center_plate, top_comb1, top_comb2, bottom_comb1, bottom_comb2] - [top_slot1, top_slot2, bottom_slot1, bottom_slot2]
 
 
 if __name__ == '__main__':

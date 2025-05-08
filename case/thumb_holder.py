@@ -5,10 +5,8 @@ from build123d import Box, Cylinder, Part, Rectangle, Pos, Rot, Sketch, Plane, A
 from ocp_vscode import show_object
 
 from base import STUD_HEIGHT, STUD_RADIUS, STUD_DISTANCE, STUD_CHAMFER_LEN, TOLERANCE, OUTPUT_DPATH
+from thumb_base import SLOT_LEN, EPS, THICKNESS
 
-
-SLOT_LEN = 2.0
-EPS = 0.01
 
 STUD_DISTANCE_X = STUD_DISTANCE
 STUD_DISTANCE_Y = math.sin(math.radians(60)) * STUD_DISTANCE * 2
@@ -31,7 +29,6 @@ class ThumbFootCreator:
     PLATE_X_LEN = 10.0
     PLATE_HEIGHT = 2.0
     Y_MARGIN = 5.0
-    COMB_THICKNESS = 2.0
     COMB_HEIGHT = 2 * SLOT_LEN
     COMB_X_OFFSET = 2.0  # from center
     COMB_SLOT_Y_OFFSET = 0.0  # from center
@@ -66,16 +63,16 @@ class ThumbFootCreator:
         return chamfer(bottom_edge, length=STUD_CHAMFER_LEN)
     
     def _create_comb(self) -> Part:
-        x_len = self.COMB_THICKNESS
+        x_len = THICKNESS
         y_len = self._base_plate_y_len
         h = self.COMB_HEIGHT
         comb = Pos(X=self.COMB_X_OFFSET, Z=h/2) * Box(x_len, y_len, h)
 
-        slots_dist = ThumbMiddlePartCreator.Y_LEN - ThumbMiddlePartCreator.THICKNESS
+        slots_dist = ThumbMiddlePartCreator.Y_LEN - THICKNESS
 
         slot_y1 = -slots_dist / 2 + self.COMB_SLOT_Y_OFFSET
         slot_y2 = slots_dist / 2 + self.COMB_SLOT_Y_OFFSET
-        slot_width = ThumbMiddlePartCreator.THICKNESS + 2 * TOLERANCE
+        slot_width = THICKNESS + 2 * TOLERANCE
         slot_height = SLOT_LEN + TOLERANCE
         slot_z = slot_height/2 + self.COMB_HEIGHT - SLOT_LEN
 
@@ -85,7 +82,6 @@ class ThumbFootCreator:
 
 
 class ThumbMiddlePartCreator:
-    THICKNESS = 2.0
     Y_LEN = 32.0
     X_LEN2 = 48.0
     ANGLE1 = 40.0  # from point 1 -> point 2
@@ -95,15 +91,14 @@ class ThumbMiddlePartCreator:
     KEY_HOLDER_THICKNESS = 2.0  # s. keysholder.py
     KEY_HOLDER_WIDTH = 20.0  # s. keysholder.py
     TRACKBALL_SLOTS_DIST = 18.0  # from center to center
-    TRACKBALL_CONN_THICKNESS = 2.0  # s. trackball_conn.py
-    THUMB_FOOT_DIST = 5 * STUD_DISTANCE_X  # from center to center of comb
+    THUMB_FOOT_DIST = 5 * STUD_DISTANCE_X  # from center to center of comb for slots
 
     @property
     def X_LEN1(self) -> float:
         right_margin = 2.0
         sin1 = math.sin(math.radians(self.ANGLE1))
         cos1 = math.cos(math.radians(self.ANGLE1))
-        return self.THICKNESS + (self.KEY_HOLDER_WIDTH + 2 * TOLERANCE) * cos1 + SLOT_LEN * sin1 + right_margin        
+        return THICKNESS + (self.KEY_HOLDER_WIDTH + 2 * TOLERANCE) * cos1 + SLOT_LEN * sin1 + right_margin        
 
     @property
     def PROFILE_Z1(self) -> float:
@@ -148,14 +143,14 @@ class ThumbMiddlePartCreator:
         body = extrude(profile, self.Y_LEN)
 
         print(f'x_len={self.X_LEN1}')
-        dx1 = self.X_LEN1 - self.THICKNESS
-        dx2 = self.X_LEN2 - 2 * self.THICKNESS
-        dy = self.Y_LEN - 2 * self.THICKNESS
+        dx1 = self.X_LEN1 - THICKNESS
+        dx2 = self.X_LEN2 - 2 * THICKNESS
+        dy = self.Y_LEN - 2 * THICKNESS
         dz = 200.0
 
-        x01 = self.THICKNESS + dx1/2
-        x02 = self.X_LEN1 + self.THICKNESS + dx2/2
-        y0 = self.THICKNESS + dy/2
+        x01 = THICKNESS + dx1/2
+        x02 = self.X_LEN1 + THICKNESS + dx2/2
+        y0 = THICKNESS + dy/2
         body -= Pos(X=x01, Y=y0) * Box(dx1, dy, dz)
         body -= Pos(X=x02, Y=y0) * Box(dx2, dy, dz)
         return body
@@ -191,8 +186,7 @@ class ThumbMiddlePartCreator:
         feet_dist = self.THUMB_FOOT_DIST  # from center of comb to center of comb
 
         x0 = (self.X_LEN1 + self.X_LEN2 - feet_dist) / 2
-        dx = ThumbFootCreator.COMB_THICKNESS + 2 * TOLERANCE
-        dz = SLOT_LEN + EPS
+        dx = THICKNESS + 2 * TOLERANCE
 
         yield Pos(X=x0) * Box(dx, 100.0, 2 + SLOT_LEN)
         yield Pos(X=x0 + feet_dist) * Box(dx, 100.0, 2 + SLOT_LEN)
@@ -206,7 +200,7 @@ class ThumbMiddlePartCreator:
         dx = self.KEY_HOLDER_THICKNESS + 2 * TOLERANCE
         y_angle = self._calc_y_angle_in_degree(dx=self.X_LEN1, dz=self.PROFILE_Z2 - self.PROFILE_Z1)
 
-        x_off = self.THICKNESS + (self.KEY_HOLDER_WIDTH / 2 + TOLERANCE) * cos1
+        x_off = THICKNESS + (self.KEY_HOLDER_WIDTH / 2 + TOLERANCE) * cos1
         z_off = self.PROFILE_Z1 + x_off * tan1
 
         for slot_x in [-slots_dist/2, slots_dist/2]:
@@ -221,7 +215,7 @@ class ThumbMiddlePartCreator:
         slot_x1 = (self.X_LEN2 - slots_dist) / 2
         slot_x2 = slot_x1 + slots_dist
 
-        dx = self.TRACKBALL_CONN_THICKNESS + 2 * TOLERANCE
+        dx = THICKNESS + 2 * TOLERANCE
         z_mean = (self.PROFILE_Z3 + self.PROFILE_Z4) / 2
 
         y_angle = self._calc_y_angle_in_degree(dx=self.X_LEN2, dz=self.PROFILE_Z4 - self.PROFILE_Z3)

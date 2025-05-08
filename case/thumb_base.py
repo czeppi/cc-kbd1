@@ -1,0 +1,3 @@
+SLOT_LEN = 2.0
+THICKNESS = 2.0
+EPS = 0.01
