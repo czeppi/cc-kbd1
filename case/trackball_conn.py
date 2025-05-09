@@ -9,8 +9,6 @@ from thumb_holder import ThumbMiddlePartCreator
 from thumb_base import THICKNESS, SLOT_LEN
 
 
-EPS = 1E-3
-
 
 def main():
     creator = TrackballConnCreator()

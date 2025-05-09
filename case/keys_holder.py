@@ -189,10 +189,11 @@ class HolderAssemblyCreator:
 
 class KeyPairHolderCreator:
 
-    def __init__(self, tolerance: float = 0.0):
+    def __init__(self, with_hot_swap_slots: bool = True, tolerance: float = 0.0):
         self._width = LEFT_RIGHT_BORDER + CUT_WIDTH + LEFT_RIGHT_BORDER + 2 * tolerance
         self._height = HOLDER_HEIGHT
         self._deep = BACK_BORDER + CUT_WIDTH + FRONT_BORDER
+        self._with_hot_swap_slots = with_hot_swap_slots
         self._thickness = THICKNESS + 2 * tolerance
 
     def create(self, front_left_bevel: float=0.0, 
@@ -311,15 +312,20 @@ class KeyPairHolderCreator:
         thickness = self._thickness
         loc = KeyPairHolderSwinger()
         cut_box = Pos(Z=-thickness/2) * Box(CUT_WIDTH, CUT_WIDTH, 1.1 * thickness)
-        front_hot_swap_box = self._create_hot_swap_slot_box(front=True)
-        back_hot_swap_box = self._create_hot_swap_slot_box(front=False)
+        
 
         holder = loc.normal_to_front_centered * holder  # move front cut in origin
-        holder = holder - cut_box - front_hot_swap_box
+        holder -= cut_box
+        if self._with_hot_swap_slots:
+            front_hot_swap_box = self._create_hot_swap_slot_box(front=True)
+            holder -= front_hot_swap_box
         holder = loc.front_centered_to_normal * holder  # move back
 
         holder = loc.normal_to_back_centered * holder  # move back cut in origin
-        holder = holder - cut_box - back_hot_swap_box
+        holder -= cut_box
+        if self._with_hot_swap_slots:
+            back_hot_swap_box = self._create_hot_swap_slot_box(front=False)
+            holder -= back_hot_swap_box
         holder = loc.back_centered_to_normal * holder  # move back
 
         return holder
