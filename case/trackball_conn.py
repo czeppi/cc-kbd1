@@ -50,7 +50,7 @@ class TrackballConnCreator:
         top_slot2 = Pos(Y=top_slots_dist/2) * copy.copy(top_slot)
 
         bottom_comb_height =  2 * SLOT_LEN + self.EXTRA_BOTTOM_HEIGHT
-        bottom_combs_dist = ThumbMiddlePartCreator.TRACKBALL_SLOTS_DIST
+        bottom_combs_dist = ThumbMiddlePartCreator.TRACKBALL_SLOTS_DIST  # center to center
         bottom_comb1_x = -bottom_combs_dist/2
         bottom_comb2_x = bottom_combs_dist/2
 
@@ -70,7 +70,16 @@ class TrackballConnCreator:
         center_x_len = center_x_right - center_x_left
         center_plate = Pos(X=center_x_offset) * Box(center_x_len, y_len, THICKNESS)
 
-        return Part() + [center_plate, top_comb1, top_comb2, bottom_comb1, bottom_comb2] - [top_slot1, top_slot2, bottom_slot1, bottom_slot2]
+        top_right_big_slot_width = y_len - 2 * (self.MARGIN + slot_width + self.MARGIN)
+        top_right_big_slot = Pos(X=center_x_right, Z=top_comb_height/2 + THICKNESS/2) * Box(10, top_right_big_slot_width, top_comb_height)
+ 
+        center_slot_left = max(top_comb1_x, bottom_comb1_x) + THICKNESS / 2
+        center_slot_right = min(top_comb2_x, bottom_comb2_x) - THICKNESS / 2
+        center_slot_offset = (center_slot_left + center_slot_right) / 2
+        center_slot = Pos(X=center_slot_offset) * Box(center_slot_right - center_slot_left, y_len - 2 * self.MARGIN, 100)
+
+        return Part() + [center_plate, top_comb1, top_comb2, bottom_comb1, bottom_comb2] \
+                      - [top_slot1, top_slot2, bottom_slot1, bottom_slot2, top_right_big_slot, center_slot]
 
 
 if __name__ == '__main__':
