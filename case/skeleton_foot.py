@@ -36,7 +36,7 @@ SLOT_LEN = 6.0
 
 SLOT_ANGLE_X = -15.0  # s. create_keys_holder.py#loc7
 SLOT_ANGLE_Y = 30.0  # s. create_keys_holder.py#loc6
-SLOT_ANGLE_Z = -30.0
+SLOT_ANGLE_Z = -15.0
 
 
 def main():
