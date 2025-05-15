@@ -10,13 +10,12 @@ from thumb_holder import ThumbMiddlePartCreator
 from thumb_base import THICKNESS, SLOT_LEN
 
 
+type Point = tuple[float, float]
+
 
 def main():
-    show_object(LameSaddleKeyCapCreator()._create_bezier_sketch19())
-    return
-
     key_cape = LameSaddleKeyCapCreator().create()
-    export_stl(key_cape, OUTPUT_DPATH / 'lame-key-cap.stl')
+    #export_stl(key_cape, OUTPUT_DPATH / 'lame-key-cap.stl')
     show_object(key_cape)
 
 
@@ -43,20 +42,24 @@ class LameSaddleKeyCapCreator:
     FOOT_TOP_CHAMFER_RADIUS = 0.2
 
     def create(self) -> Part:
-        bezier = self._create_bezier_sketch7_shape9()
-        face = make_face(bezier)
-        return extrude(face, 1)
-
-        # return self._create_cap()
+        return self._create_cap()
 
     def _create_cap(self) -> Part:
-        bezier = self._create_bezier7_outside()
-        bezier += mirror(bezier, Plane.YZ)
-        bezier += mirror(bezier, Plane.XZ)
-        face = make_face(bezier)
-        return extrude(face, 1)
+        return self._create_cap_body()
+    
+    def _create_cap_body(self) -> Part:
+        return CapBodyCreator().create()
+    
+        bezier_bottom = Pos(Z=1.3) * self._create_bezier_sketch7_shape9()
+        bezier_top = Pos(Z=5.8) * self._create_bezier_sketch7_shape8()
 
-    def _create_bezier_sketch7_shape8(self) -> Curve:
+        return loft(Sketch() + [bezier_bottom, bezier_top])
+
+
+#        face = make_face(bezier)
+#        return extrude(face, 1)
+
+    def _create_bezier_sketch7_shape8(self) -> Sketch:
         points = [
             (0.0, 6.5),
             (2.368, 6.484),
@@ -67,11 +70,11 @@ class LameSaddleKeyCapCreator:
             (7.0, 0.0),
         ]
         bezier = Bezier(points[:4]) + Bezier(points[3:])
-        bezier += mirror(bezier, Plane.YZ)
         bezier += mirror(bezier, Plane.XZ)
-        return bezier
+        bezier += mirror(bezier, Plane.YZ)
+        return make_face(bezier)
 
-    def _create_bezier_sketch7_shape9(self) -> Curve:
+    def _create_bezier_sketch7_shape9(self) -> Sketch:
         points = [
             (0.0, 8.25),
             (3.352, 8.219),
@@ -84,7 +87,7 @@ class LameSaddleKeyCapCreator:
         bezier = Bezier(points[:4]) + Bezier(points[3:])
         bezier += mirror(bezier, Plane.YZ)
         bezier += mirror(bezier, Plane.XZ)
-        return bezier
+        return make_face(bezier)
     
     def _create_bezier_sketch10_shape2(self) -> Curve:
         points = [
@@ -253,6 +256,108 @@ class LameSaddleKeyCapCreator:
     def _create_foot(self) -> Part:
         return Box()
     
+
+class CapBodyCreator:
+    _BOTTOM_BEZIER_POINTS = [  # XY plane
+            (0.0, 8.25),
+            (3.352, 8.219),
+            (6.150, 8.317),
+            (7.335, 7.211),
+            (8.605, 6.203),
+            (8.726, 3.431),
+            (8.75, 0.0),
+        ]
+    _TOP_BEZIER_POINTS = [  # XY plane
+            (0.0, 6.5),
+            (2.368, 6.484),
+            (4.452, 6.355),
+            (5.527, 5.395),
+            (6.649, 4.495),
+            (6.991, 2.441),
+            (7.0, 0.0),
+        ]
+    _RIGHT_BEZIER_POINTS = [  # XZ plane
+            (8.75, 1.3), 
+            (8.705, 2.606), 
+            (8.485, 4.304), 
+            (7.0, 5.8),
+        ]
+    _BACK_BEZIER_POINTS = [  # YZ plane
+            (8.25, 1.3),
+            (8.205, 2.606),
+            (7.985, 4.304),
+            (6.5, 5.8),
+        ]
+    
+    def __init__(self):
+        self._x_max_bottom = 8.75
+        self._x_max_top = 7.0
+        self._y_max_bottom = 8.25
+        self._y_max_top = 6.5
+        self._z_min = 1.3
+        self._z_max = 5.8
+   
+    def create(self) -> Part:
+        z_min = self._z_min
+        z_max = self._z_max
+        z_center = (self._z_min + self._z_max) / 2
+
+        bezier_bottom = Pos(Z=z_min) * self._create_bezier_face(self._BOTTOM_BEZIER_POINTS)
+        bezier_top = Pos(Z=z_max) * self._create_bezier_face(self._TOP_BEZIER_POINTS)
+        bezier_middle = Pos(Z=z_center) * self._create_bezier_face(list(self._iter_z_centered_bezier_points()))
+
+        return loft(Sketch() + [bezier_bottom, bezier_middle, bezier_top])
+
+    def _create_bezier_face(self, points: list[Point]) -> Sketch:
+        assert len(points) == 7
+        bezier = Bezier(points[:4]) + Bezier(points[3:])
+        bezier += mirror(bezier, Plane.XZ)
+        bezier += mirror(bezier, Plane.YZ)
+        return make_face(bezier)
+         
+    def _iter_z_centered_bezier_points(self) -> Iterator[Point]:
+        scale_x, scale_y = self._create_scale_xy()
+        for (x1, y1), (x2, y2) in zip(self._BOTTOM_BEZIER_POINTS, self._TOP_BEZIER_POINTS):
+            x = scale_x * (x1 + x2) / 2
+            y = scale_y * (y1 + y2) / 2
+            yield x, y 
+
+    def _create_scale_xy(self) -> tuple[float, float]:
+        x_mean = (self._x_max_bottom + self._x_max_top) / 2
+        y_mean = (self._y_max_bottom + self._y_max_top) / 2
+        z_center = (self._z_min + self._z_max) / 2
+
+        right_bezier = Bezier(self._RIGHT_BEZIER_POINTS)
+        back_bezier = Bezier(self._BACK_BEZIER_POINTS)
+
+        x_curve = self._find_curve_x_at_y(curve=right_bezier, y_target=z_center)
+        y_curve = self._find_curve_x_at_y(curve=back_bezier, y_target=z_center)
+
+        scale_x = x_curve / x_mean
+        scale_y = y_curve / y_mean
+
+        return scale_x, scale_y
+
+    @staticmethod
+    def _find_curve_x_at_y(curve: Curve, y_target: float) -> float:  # curve must monoton increase
+        eps = 1e-6
+        assert (curve@0).Y <= y_target <= (curve@1).Y
+
+        t1 = 0.0
+        t2 = 1.0
+
+        for i in range(100):
+            t = (t1 + t2) / 2
+            p = curve@t
+            if (p.Y - y_target) < eps:
+                return p.X
+            elif p.Y < y_target:
+                t1 = t
+            else:
+                t2 = t
+        else:
+            raise Exception('y value not found')
+
 
 class TantgentScaleFinder:
     """ 
