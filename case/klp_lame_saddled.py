@@ -1,7 +1,7 @@
 from typing import Iterator
 import copy
-from build123d import offset, export_stl, loft, make_face, extrude, mirror
-from build123d import Box, Part, Pos, Line, Bezier, Plane, Curve, Axis, Sketch, GeomType
+from build123d import offset, export_stl, loft, make_face, extrude, mirror, sweep, new_edges, fillet, chamfer
+from build123d import Box, Part, Pos, Line, Bezier, Plane, Curve, Axis, Sketch, GeomType, Rectangle, Rot, Polyline
 from ocp_vscode import show_object
 
 from base import TOLERANCE, OUTPUT_DPATH
@@ -14,6 +14,7 @@ type Point = tuple[float, float]
 
 
 def main():
+    #key_cape = Plane.front * Pos(Z=1, Y=1) * Rectangle(1, 1)
     key_cape = LameSaddleKeyCapCreator().create()
     #export_stl(key_cape, OUTPUT_DPATH / 'lame-key-cap.stl')
     show_object(key_cape)
@@ -45,50 +46,36 @@ class LameSaddleKeyCapCreator:
         return self._create_cap()
 
     def _create_cap(self) -> Part:
-        return self._create_cap_body()
-    
+        cap_body = self._create_cap_body()
+        sweep_part = self._create_sweep_part()
+
+        sweeped_cap_body = cap_body - sweep_part
+        return sweeped_cap_body
+
+        #edges = new_edges(cap_body, sweep_part, combined=sweeped_cap_body)
+        edges = sweeped_cap_body.edges().group_by(Axis.Z)[0]
+        return edges
+
+        #r = sweeped_cap_body.max_fillet(edges, tolerance=0.01)
+        #print(f'r={r}')
+        return chamfer(edges, 0.1)
+        
     def _create_cap_body(self) -> Part:
         return CapBodyCreator().create()
     
-        bezier_bottom = Pos(Z=1.3) * self._create_bezier_sketch7_shape9()
-        bezier_top = Pos(Z=5.8) * self._create_bezier_sketch7_shape8()
-
-        return loft(Sketch() + [bezier_bottom, bezier_top])
-
-
-#        face = make_face(bezier)
-#        return extrude(face, 1)
-
-    def _create_bezier_sketch7_shape8(self) -> Sketch:
-        points = [
-            (0.0, 6.5),
-            (2.368, 6.484),
-            (4.452, 6.355),
-            (5.527, 5.395),
-            (6.649, 4.495),
-            (6.991, 2.441),
-            (7.0, 0.0),
-        ]
-        bezier = Bezier(points[:4]) + Bezier(points[3:])
-        bezier += mirror(bezier, Plane.XZ)
-        bezier += mirror(bezier, Plane.YZ)
-        return make_face(bezier)
-
-    def _create_bezier_sketch7_shape9(self) -> Sketch:
-        points = [
-            (0.0, 8.25),
-            (3.352, 8.219),
-            (6.150, 8.317),
-            (7.335, 7.211),
-            (8.605, 6.203),
-            (8.726, 3.431),
-            (8.75, 0.0 ),
-        ]
-        bezier = Bezier(points[:4]) + Bezier(points[3:])
-        bezier += mirror(bezier, Plane.YZ)
-        bezier += mirror(bezier, Plane.XZ)
-        return make_face(bezier)
+    def _create_sweep_part(self) -> Part:
+        face = Plane.front * self._create_face_to_sweep()
+        sweep_path = self._create_bezier_sketch19()
+        return sweep(face, path=Plane.right * sweep_path)
     
+    def _create_face_to_sweep(self) -> Sketch:
+        bezier = self._create_bezier_sketch14_shape1()
+        p1 = bezier@0
+        p2 = bezier@1
+
+        polyline = Polyline([(p1.X, p1.Y), (p1.X, p1.Y + 3), (p2.X, p2.Y + 3), (p2.X, p2.Y)])
+        return make_face(bezier + polyline)
+
     def _create_bezier_sketch10_shape2(self) -> Curve:
         points = [
             (8.25, 1.3),
@@ -111,11 +98,11 @@ class LameSaddleKeyCapCreator:
     
     def _create_bezier_sketch14_shape1(self) -> Curve:
         points = [
-            (-7.0, -5.8),
-            (-4.734, -4.827), 
-            (0.0, -4.8),  
-            (4.734, -4.827), 
-            (7.0, -5.8),
+            (-7.0, 5.8),    # changed sign of all y values
+            (-4.734, 4.827), 
+            (0.0, 4.8),  
+            (4.734, 4.827), 
+            (7.0, 5.8),
         ]
         bezier = Bezier(points[:3]) + Bezier(points[2:])  # quad bezier curves!
         return bezier
@@ -188,67 +175,6 @@ class LameSaddleKeyCapCreator:
                             Bezier(points[6:10]),
                             Bezier(points[9:])]
         return bezier
-    
-    def _create_bezier7_inside(self) -> Line:
-        """ sketch 7 """
-        x_max = 7.0
-        y_max = 6.5
-
-        # tangent_len = self._tangent_len  # 2.5 * 2.3
-        tangent_len_finder = TantgentScaleFinder(x_max=x_max, y_max=y_max, x1=6.0, y1=4.88)  # (x1, y1) taken from AutoDesk
-        tangent_len = tangent_len_finder.find_tangent_len()
-
-        x0, y0 = 0, y_max
-        x1, y1 = tangent_len, y0
-        x2, y2 = x_max, tangent_len
-        x3, y3 = x2, 0
-
-        return Bezier([(x0, y0), (x1, y1), (x2, y2), (x3, y3)])
-    
-    def _create_bezier7_outside(self) -> Line:
-        """ sketch 7 """
-        x_max = 8.75
-        y_max = 8.25
-
-        # tangent_len = self._tangent_len
-        tangent_len_finder = TantgentScaleFinder(x_max=x_max, y_max=y_max, x1=8.0, y1=6.32)  # (x1, y1) taken from AutoDesk
-        tangent_len = tangent_len_finder.find_tangent_len()
-
-        x0, y0 = 0, y_max
-        x1, y1 = tangent_len, y0
-        x2, y2 = x_max, tangent_len
-        x3, y3 = x2, 0
-
-        return Bezier([(x0, y0), (x1, y1), (x2, y2), (x3, y3)])
-    
-    def _create_bezier14(self) -> Line:
-        """ sketch 14, xz plane """
-        z_max = 5.8
-        z_min = 4.8
-        x_max = 7.0
-        tangent_len = 3.6  # center, outside=?
-
-        x0, z0 = 0, z_min
-        x1, z1 = tangent_len, z0
-        x2, z2 = None  # todo
-        x3, z3 = x_max, z_max
-
-        return Bezier([(x0, z0), (x1, z1), (x2, z2), (x3, z3)])
-
-    def _create_bezier10(self) -> Line:
-        """ sketch 10, yz plane """
-        z_min = 1.3
-        z_max = 5.8
-        y_max = 8.25
-        top_tangent_len = 1.131
-        bottom_tangent_len = 0.7
-
-        y0, z0 = y_max, z_min
-        y1, z1 = y0, 1.65
-        y2, z2 = 6.9, 5.4
-        y3, z3 = None, z_max  # todo
-
-        return Bezier([(y0, z0), (y1, z1), (y2, z2), (y3, z3)])
     
     def _iter_feet(self) -> Iterator[Part]:
         pass
