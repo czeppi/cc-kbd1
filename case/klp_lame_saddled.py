@@ -1,7 +1,9 @@
 from typing import Iterator
+from dataclasses import dataclass
 import copy
+import math
 from build123d import offset, export_stl, loft, make_face, extrude, mirror, sweep, new_edges, fillet, chamfer
-from build123d import Box, Part, Pos, Line, Bezier, Plane, Curve, Axis, Sketch, GeomType, Rectangle, Rot, Polyline, RectangleRounded, Spline
+from build123d import Box, Part, Pos, Line, Bezier, Plane, Curve, Axis, Sketch, GeomType, Rectangle, Rot, Polyline, RectangleRounded, Spline, JernArc, Circle
 from ocp_vscode import show_object
 
 from base import TOLERANCE, OUTPUT_DPATH
@@ -14,10 +16,45 @@ type Point = tuple[float, float]
 
 
 def main():
-    #key_cape = Plane.front * Pos(Z=1, Y=1) * Rectangle(1, 1)
-    key_cape = LameSaddleKeyCapCreator().create()
+    key_cap = LameSaddleKeyCapCreator().create()
     #export_stl(key_cape, OUTPUT_DPATH / 'lame-key-cap.stl')
-    show_object(key_cape)
+    show_object(key_cap)
+
+
+def main_test():
+    face1 = Pos(Z=0) * create_birect(4, r=5)
+    face2 = Pos(Z=1) * create_birect(3.5, r=4.8)
+    face3 = Pos(Z=2) * create_birect(3, r=4)
+    part = loft(Sketch() + [face1, face2, face3])
+
+    part = fillet(part.edges().group_by(Axis.Z)[0], 0.5)
+    part = fillet(part.edges().group_by(Axis.Z)[-1], 0.5)
+
+
+    show_object(part)
+    return
+
+    x1 = 8.0
+    x2 = 4.0
+    r1 = 20.0
+    r2 = 1.0
+    key_cap = JernArc(start=(0, 2), tangent=(1, 0), radius=5, arc_size=-30)
+
+
+def create_birect(a: float, r: float):
+    a2 = a / 2
+    rect = Pos(Y=a2 - r) * Circle(r) & Pos(Y=r - a2) * Circle(r) & Pos(X=a2 - r) * Circle(r) & Pos(X=r - a2) * Circle(r)
+    return fillet(rect.vertices(), 1)
+
+
+def create_arc_rect(width: float, height: float, radius_horziontal: float, radius_vertical: float, radius_corner: float) -> Sketch:
+    w2 = width / 2
+    h2 = height / 2
+    rh = radius_horziontal
+    rv = radius_horziontal
+
+    rect = Pos(Y=h2 - rh) * Circle(rh) & Pos(Y=rh - h2) * Circle(rh) & Pos(X=w2 - rv) * Circle(rv) & Pos(X=rv - w2) * Circle(rv)
+    return fillet(rect.vertices(), radius_corner)
 
 
 class LameSaddleKeyCapCreator:
@@ -50,15 +87,33 @@ class LameSaddleKeyCapCreator:
         sweep_part = self._create_sweep_part()
 
         sweeped_cap_body = cap_body - sweep_part
+        #return sweeped_cap_body
 
-        #edges = new_edges(cap_body, sweep_part, combined=sweeped_cap_body)
-        edges = sweeped_cap_body.edges().group_by(Axis.Z)[0]
+        edges = new_edges(cap_body, sweep_part, combined=sweeped_cap_body)
+        part = fillet(edges, 1.26)
+
+        edges = part.edges().group_by(Axis.Z)[0]
+        part = fillet(edges, 0.25)
 
         #r = sweeped_cap_body.max_fillet(edges, tolerance=0.01)
         #print(f'r={r}')
-        return fillet(edges, 0.2)
+        return part
         
     def _create_cap_body(self) -> Part:
+        #return CapBodyCreator().create()
+    
+        radius_corner = 3
+        radius_side = 30
+        face1 = Pos(Z=1.3) * create_arc_rect(width=17.5, height=16.5, radius_horziontal=radius_side, radius_vertical=radius_side, radius_corner=radius_corner)
+        face2 = Pos(Z=3.55) * create_arc_rect(width=16.5, height=15.5, radius_horziontal=radius_side, radius_vertical=radius_side, radius_corner=radius_corner)
+        face3 = Pos(Z=5.8) * create_arc_rect(width=14, height=13, radius_horziontal=radius_side, radius_vertical=radius_side, radius_corner=radius_corner)
+        part = loft(Sketch() + [face1, face2, face3])
+
+        #part = fillet(part.edges().group_by(Axis.Z)[0], 0.5)
+        #part = fillet(part.edges().group_by(Axis.Z)[-1], 0.5)
+        return part
+
+
         rect_bottom = Pos(Z=1.3) * RectangleRounded(16.5, 15.5, radius=2)  # Rectangle(17.5, 16.5)
         rect_middle = Pos(Z=3.55) * RectangleRounded(15.5, 14.5, radius=2)
         rect_top = Pos(Z=5.8) * RectangleRounded(13, 12, radius=2)  # Rectangle(14, 13)
@@ -186,6 +241,24 @@ class LameSaddleKeyCapCreator:
         return Box()
     
 
+class FourArcClosedCurve:
+
+    def __init__(self, width: float, height: float, r: float, angle: float): 
+        assert width == height  # simplified in the moment
+        assert 2 * r > width
+        assert 0 < angle < 90
+
+        self._width = width
+        self._height = height
+        self._r = r
+        self._angle = angle
+
+    def create(self) -> Curve:
+        return JernArc(start=(0, self._height / 2), tangent=(0, 1), radius=self._r, arc_size=self._angle)
+
+
+
+
 class CapBodyCreator:
     _BOTTOM_BEZIER_POINTS = [  # XY plane
             (0.0, 8.25),
@@ -235,7 +308,7 @@ class CapBodyCreator:
         bezier_top = Pos(Z=z_max) * self._create_bezier_face(self._TOP_BEZIER_POINTS)
         bezier_middle = Pos(Z=z_center) * self._create_bezier_face(list(self._iter_z_centered_bezier_points()))
 
-        return loft(Sketch() + [bezier_bottom, bezier_middle, bezier_top])
+        return loft(Sketch() + [bezier_bottom, bezier_top])
 
     def _create_bezier_face(self, points: list[Point]) -> Sketch:
         assert len(points) == 7
@@ -362,6 +435,63 @@ class TantgentScaleFinder:
                       (tangent_len, y_max),
                       (x_max, tangent_len),
                       (x_max, 0))
+
+@dataclass
+class ArcParameter:
+    p1: Point
+    p2: Point
+    r: float
+
+
+class ArcFilledRectangle:
+    """ A rectangle with consists of 8 arcs 
+
+    Big arcss at the sides, small arcs in the corners.
+    Top + bottom arc have the same radius
+    Left + right arc have the same radius
+    The corner arcs have all the same radius
+    """
+    def __init__(self, width: float, height: float, radius_horizontal: float, radius_vertical: float, radius_corners: float):
+        assert width >= height  # make the implementation easier
+        assert radius_horizontal > height / 2
+        assert radius_corners < min(height / 2, radius_vertical)
+         
+        self._width = width
+        self._height = height
+        self._radius_horizontal = radius_horizontal
+        self._radius_vertical = radius_vertical
+        self._radius_corners = radius_corners
+
+    def iter_arc_parameters(self) -> Iterator[ArcParameter]:
+        w, h = self._width, self._height
+        rh = self._radius_horizontal
+        rv = self._radius_vertical
+        rc = self._radius_corners
+
+        # centers
+        c1y = h/2 - rh  # c1x == 0
+        c2x = w/2 - rv  # c2y == 0
+
+        # side length of triangle
+        a = rh - rc
+        b = rv - rc
+        c = math.hypot(c2x, c1y)  # distance of both centers
+
+        k = (b**2 - a**2 + c**2) / (2 * c**2)
+        xd = k * c2x
+        yd = k * -c1y
+        
+        h2 = math.sqrt(b**2 - (k * c)**2)
+
+        # center of corner circle (2 possible solutions)
+        c3x1 = k * c2x + c1y / c * h2
+        c3x2 = k * c2x - c1y / c * h2
+        c3y1 = -k * c1y + c2x / c * h2
+        c3y2 = -k * c1y - c2x / c * h2
+
+
+
+         
 
 
 if __name__ == '__main__':
