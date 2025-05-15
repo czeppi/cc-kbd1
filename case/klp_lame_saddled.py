@@ -1,7 +1,7 @@
 from typing import Iterator
 import copy
 from build123d import offset, export_stl, loft, make_face, extrude, mirror, sweep, new_edges, fillet, chamfer
-from build123d import Box, Part, Pos, Line, Bezier, Plane, Curve, Axis, Sketch, GeomType, Rectangle, Rot, Polyline
+from build123d import Box, Part, Pos, Line, Bezier, Plane, Curve, Axis, Sketch, GeomType, Rectangle, Rot, Polyline, RectangleRounded
 from ocp_vscode import show_object
 
 from base import TOLERANCE, OUTPUT_DPATH
@@ -50,17 +50,21 @@ class LameSaddleKeyCapCreator:
         sweep_part = self._create_sweep_part()
 
         sweeped_cap_body = cap_body - sweep_part
-        return sweeped_cap_body
 
-        #edges = new_edges(cap_body, sweep_part, combined=sweeped_cap_body)
-        edges = sweeped_cap_body.edges().group_by(Axis.Z)[0]
-        return edges
+        edges = new_edges(cap_body, sweep_part, combined=sweeped_cap_body)
+        #edges = sweeped_cap_body.edges().group_by(Axis.Z)[0]
 
         #r = sweeped_cap_body.max_fillet(edges, tolerance=0.01)
         #print(f'r={r}')
-        return chamfer(edges, 0.1)
+        return fillet(edges, 1.26)
         
     def _create_cap_body(self) -> Part:
+        rect_bottom = Pos(Z=1.3) * RectangleRounded(16.5, 15.5, radius=2)  # Rectangle(17.5, 16.5)
+        rect_middle = Pos(Z=3.55) * RectangleRounded(15.5, 14.5, radius=2)
+        rect_top = Pos(Z=5.8) * RectangleRounded(13, 12, radius=2)  # Rectangle(14, 13)
+        return loft(Sketch() + [rect_bottom, rect_middle, rect_top])
+
+
         return CapBodyCreator().create()
     
     def _create_sweep_part(self) -> Part:
