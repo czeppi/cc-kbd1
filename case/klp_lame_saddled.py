@@ -2,9 +2,15 @@ from typing import Iterator
 from dataclasses import dataclass
 import copy
 import math
+
+import scipy
+import shapely
+import numpy as np
+
 from build123d import offset, export_stl, loft, make_face, extrude, mirror, sweep, new_edges, fillet, chamfer
-from build123d import Box, Part, Pos, Line, Bezier, Plane, Curve, Axis, Sketch, GeomType, Rectangle, Rot, Polyline, RectangleRounded, Spline, JernArc, Circle
+from build123d import Box, Part, Pos, Line, Bezier, Plane, Curve, Axis, Sketch, GeomType, Rectangle, Rot, Polyline, RectangleRounded, Spline, JernArc, Circle, Edge
 from ocp_vscode import show_object
+import scipy.optimize
 
 from base import TOLERANCE, OUTPUT_DPATH
 from trackball_holder import TrackballHolderCreator
@@ -16,9 +22,46 @@ type Point = tuple[float, float]
 
 
 def main():
+    _find_arc_rect_parameters()
+    #_find_arc_rect_parameters_manual()
+
+
+def show_cap():
     key_cap = LameSaddleKeyCapCreator().create()
-    #export_stl(key_cape, OUTPUT_DPATH / 'lame-key-cap.stl')
+    export_stl(key_cap, OUTPUT_DPATH / 'lame-key-cap.stl')
     show_object(key_cap)
+
+
+def _find_arc_rect_parameters():
+    points = CapBodyCreator._BOTTOM_BEZIER_POINTS
+    bezier = Bezier(points[:4]) + Bezier(points[3:])
+
+    param_finder = ArcRectParametersFinder(bezier_curve=bezier)
+    best_params = param_finder.find_parameters()
+    print(f'best_params = {best_params}')
+
+def _find_arc_rect_parameters_manual():
+    body_createor = CapBodyCreator()
+    bezier_bottom = body_createor._create_bezier_face(body_createor._BOTTOM_BEZIER_POINTS)
+    show_object(bezier_bottom, name='bezier_bottom')
+
+    rh, rv, rc = 70, 38, 3.2
+    rect = create_arc_rect(width=17.5, height=16.5, radius_horziontal=rh, radius_vertical=rv, radius_corner=rc)
+    show_object(rect, name="arc-rect-manu")
+
+    #rh, rv, rc = 127.77364364, 49.05397903, 3.95642961  # curve dist
+
+    rh, rv, rc = 82.17270862, 42.35694325, 3.49574271  # area diff of poly
+    rect = create_arc_rect(width=17.5, height=16.5, radius_horziontal=rh, radius_vertical=rv, radius_corner=rc)
+    show_object(rect, name="arc-rect-area-poly")
+
+    rh, rv, rc = 70.02322301, 39.20389013, 3.39182747  # max dist of poly
+    rect = create_arc_rect(width=17.5, height=16.5, radius_horziontal=rh, radius_vertical=rv, radius_corner=rc)
+    show_object(rect, name="arc-rect-max-dist-poly")
+
+    rh, rv, rc = 74.836244, 41.30011255, 3.46418388  # sum of poly square dist
+    rect = create_arc_rect(width=17.5, height=16.5, radius_horziontal=rh, radius_vertical=rv, radius_corner=rc)
+    show_object(rect, name="arc-rect-sum-of-square-poly")
 
 
 def main_test():
@@ -51,10 +94,225 @@ def create_arc_rect(width: float, height: float, radius_horziontal: float, radiu
     w2 = width / 2
     h2 = height / 2
     rh = radius_horziontal
-    rv = radius_horziontal
+    rv = radius_vertical
 
     rect = Pos(Y=h2 - rh) * Circle(rh) & Pos(Y=rh - h2) * Circle(rh) & Pos(X=w2 - rv) * Circle(rv) & Pos(X=rv - w2) * Circle(rv)
     return fillet(rect.vertices(), radius_corner)
+
+@dataclass
+class ArcRectParameters:
+    radius_horizontal: float
+    radius_vertical: float
+    radius_corner: float
+
+
+class ArcRectParametersFinder:
+    _BIG_RADIUS_MIN = 15.0
+    _BIG_RADIUS_MAX = 200.0
+    _SMALL_RADIUS_MIN = 0.1
+    _SMALL_RADIUS_MAX = 5.0
+
+    def __init__(self, bezier_curve: Curve):  # bezier_curve should only defined in the x+/y+ quarter
+        self._bezier_curve = bezier_curve
+
+    def find_parameters(self) -> ArcRectParameters:
+        big_r_min = self._BIG_RADIUS_MIN
+        big_r_max = self._BIG_RADIUS_MAX
+        small_r_min = self._SMALL_RADIUS_MIN
+        small_r_max = self._SMALL_RADIUS_MAX
+
+        #start_values = [70, 38, 3.2]  # radius_horizontal, radius_vertical, radius_corner
+        start_values = [60, 40, 2.5]  # radius_horizontal, radius_vertical, radius_corner
+
+        result = scipy.optimize.minimize(
+            fun=self._calc_error_with_polygon_distances,
+            x0=start_values, 
+            #bounds=[(big_r_min, big_r_min, small_r_min), (big_r_max, big_r_max, small_r_max)])
+            bounds=[(big_r_min, big_r_max), (big_r_min, big_r_max), (small_r_min, small_r_max)])
+        
+        if not result.success:
+            raise Exception('no best parameters found')
+        
+        print(f'{result.success}, {result.x}')
+        
+        rh, rv, rc = result.x
+        return ArcRectParameters(radius_horizontal=rh,
+                                 radius_vertical=rv,
+                                 radius_corner=rc)
+    
+    def _calc_error_with_curve_diff(self, params: tuple[float, float, float]) -> float:
+        rh, rv, rc = params
+        arc_rect_params = ArcRectParameters(radius_horizontal=rh, radius_vertical=rv, radius_corner=rc)
+
+        diff_calc = CurveDiffCalculator(bezier_curve=self._bezier_curve, 
+                                        arc_rect_params=arc_rect_params)
+        return diff_calc.calc_diff_value()
+    
+    def _calc_error_with_polygon_distances(self, params: tuple[float, float, float]) -> float:
+        rh, rv, rc = params
+        arc_rect_params = ArcRectParameters(radius_horizontal=rh, radius_vertical=rv, radius_corner=rc)
+
+        n = 17
+        bezier = self._bezier_curve
+        bezier_pts = [bezier@(i / (n - 1)) for i in range(n)]
+        bezier_points = [(p.X, p.Y) for p in bezier_pts]
+        arc_rect_points = list(self._iter_arc_rect_points(arc_rect_params=arc_rect_params, num_points=n))
+        assert len(arc_rect_points) == n
+
+        err = self._calc_error_of_polygons(bezier_points, arc_rect_points)
+        print(f'  err: {err}, params: {rh, rv, rc}')
+        return err
+
+    def _iter_arc_rect_points(self, arc_rect_params: ArcRectParameters, num_points: int) -> Iterator[Point]:
+        bezier = self._bezier_curve
+        p1 = bezier@0
+        p2 = bezier@1
+        width = 2 * max(p1.X, p2.X)
+        height = 2 * max(p1.Y, p2.Y)
+
+        arc_rect = create_arc_rect(width=width, height=height,
+                                   radius_horziontal=arc_rect_params.radius_horizontal, 
+                                   radius_vertical=arc_rect_params.radius_vertical, 
+                                   radius_corner=arc_rect_params.radius_corner)
+        arc_rect -= Pos(X=-50) * Rectangle(100, 100)
+        arc_rect -= Pos(Y=-50) * Rectangle(100, 100)
+        rect_edges = arc_rect.edges().filter_by(GeomType.CIRCLE)
+        assert len(rect_edges) == 3
+
+        yield 0.0, height / 2
+
+        for i in range(1, num_points - 1):
+            angle = 90 * i / (num_points - 1)
+
+            for edge in rect_edges:
+                rotated_edge = Rot(Z=angle) * edge
+
+                intersection_points = rotated_edge.find_intersection_points(Axis.Y)
+                if len(intersection_points) == 1:
+                    r = intersection_points[0].Y
+                    phi = math.radians(angle)
+                    x = r * math.sin(phi)
+                    y = r * math.cos(phi)
+                    yield x, y
+                    break
+            else:
+                raise Exception('no intersecion point found')
+            
+        yield width / 2, 0.0
+
+    def _calc_error_of_polygons(self, bezier_points: list[Point], arc_rect_points: list[Point]) -> float:
+        origin = 0.0, 0.0
+        poly1 = shapely.Polygon(np.array([origin] + bezier_points))
+        poly2 = shapely.Polygon(np.array([origin] + arc_rect_points))
+
+        #eturn self._calc_max_distance_of_polygons(poly1, poly2)
+        #return self._calc_area_diff_of_polygons(poly1, poly2)
+        return self._calc_square_distance_of_polygons(poly1, poly2)
+    
+    def _calc_max_distance_of_polygons(self, poly1: shapely.Polygon, poly2: shapely.Polygon) -> float:  # converged slowly
+        line1 = shapely.LineString(poly1.exterior.coords)
+        line2 = shapely.LineString(poly2.exterior.coords)
+
+        max1 = max(shapely.Point(pt).distance(line2)
+                   for pt in poly1.exterior.coords)
+        
+        max2 = max(shapely.Point(pt).distance(line1)
+                   for pt in poly2.exterior.coords)
+
+        return max(max1, max2)
+    
+    def _calc_square_distance_of_polygons(self, poly1: shapely.Polygon, poly2: shapely.Polygon) -> float:
+        line1 = shapely.LineString(poly1.exterior.coords)
+        line2 = shapely.LineString(poly2.exterior.coords)
+
+        sum1 = sum(shapely.Point(pt).distance(line2)**2
+                   for pt in poly1.exterior.coords)
+        
+        sum2 = sum(shapely.Point(pt).distance(line1)**2
+                   for pt in poly2.exterior.coords)
+
+        return sum1 + sum2
+
+    def _calc_area_diff_of_polygons(self, poly1: shapely.Polygon, poly2: shapely.Polygon) -> float:
+        intersection_area = poly1.intersection(poly2).area
+        union_area = poly1.union(poly2).area
+        return union_area - intersection_area
+
+
+class CurveDiffCalculator:
+
+    def __init__(self, bezier_curve: Curve, arc_rect_params: ArcRectParameters):
+        self._bezier_curve = bezier_curve
+        self._arc_rect_params = arc_rect_params
+
+    def calc_diff_value(self) -> float:
+        rh = self._arc_rect_params.radius_horizontal
+        rv = self._arc_rect_params.radius_vertical
+        rc = self._arc_rect_params.radius_corner
+        bezier = self._bezier_curve
+
+        p1 = bezier@0
+        p2 = bezier@1
+
+        width = 2 * max(p1.X, p2.X)
+        height = 2 * max(p1.Y, p2.Y)
+
+        n = 16
+        bezier_points = [bezier@(i / n) for i in range(n + 1)]
+
+        arc_rect = create_arc_rect(width=width, height=height, radius_horziontal=rh, radius_vertical=rv, radius_corner=rc)
+        arc_rect -= Pos(X=-50) * Rectangle(100, 100)
+        arc_rect -= Pos(Y=-50) * Rectangle(100, 100)
+        rect_edges = arc_rect.edges().filter_by(GeomType.CIRCLE)
+        assert len(rect_edges) == 3
+
+        return sum(self._calc_error_at_p(p, rect_edges=rect_edges)
+                   for p in bezier_points)
+    
+    def _calc_error_at_p(self, bezier_point, rect_edges: list[Edge]) -> float:
+        eps = 1e-4
+        x, y_bezier = bezier_point.X, bezier_point.Y
+        #print(f'bezier: {x}, {y_bezier}')
+
+        y_rect = None
+        for edge in rect_edges:
+            p1 = edge.start_point()
+            p2 = edge.end_point()
+            x_min = min(p1.X, p2.X) - eps
+            x_max = max(p1.X, p2.X) + eps
+
+            if x_min <= x <= x_max:
+                intersection_points = (Pos(X=-x) * edge).find_intersection_points(Axis.Y)
+                assert len(intersection_points) == 1
+                y_rect = intersection_points[0].Y
+                break
+        else:
+            raise Exception('no edge found')
+
+        #y_rect = self._calc_monoton_curve_value(x, curve=curve)
+
+        return (y_rect - y_bezier)**2
+
+    def _calc_monoton_curve_value(self, x_target: float, curve: Curve) -> float:
+        eps = 1e-4
+        t1, t2 = 0.0, 1.0
+        for i in range(100):
+            t = (t1 + t2) / 2
+            p = curve@t
+            if abs(p.X - x_target) < eps:
+                return p.Y
+            elif p.X < x_target:
+                t1 = t
+            else:
+                t2 = t
+        else:
+            raise Exception(f'value not found')
+
+
+
+
+
+
 
 
 class LameSaddleKeyCapCreator:
@@ -372,126 +630,6 @@ class CapBodyCreator:
                 t2 = t
         else:
             raise Exception('y value not found')
-
-
-class TantgentScaleFinder:
-    """ 
-        TantgentScaleFinder(x_max=7, y_max=6.5, x1=6.0, y1=4.88)
-        => tangent_len=5.552734375
-        => tangent_scale = tangent_len / 2.5 = 2.22109375
-
-        TantgentScaleFinder(x_max=8.74, y_max=8.25, x1=8.0, y1=6.32) 
-        => tangent_len=8.0224609375
-        => tangent_scale = tangent_len / 3.5 = 2.2921316964285716
-    """
-
-    def __init__(self, x_max: float, y_max: float, x1: float, y1):
-        self._x_max = x_max
-        self._y_max = y_max
-        self._x1 = x1
-        self._y1 = y1
-        
-    def find_tangent_len(self) -> float:
-        tangent_len_a = 1.0
-        tangent_len_b = 10.0
-        eps = 1e-3
-
-        for i in range(100):
-            tangent_len = (tangent_len_a + tangent_len_b) / 2
-            y = self._find_y_intersection(tangent_len=tangent_len)
-            print(f'{i}: {y}, tangent_len={tangent_len}')
-            if abs(y - self._y1) < eps:
-                return tangent_len
-            elif y < self._y1:
-                tangent_len_a = tangent_len
-            else:
-                tangent_len_b = tangent_len
-        else:
-            raise Exception('no tangent_len found')
-
-    def _find_y_intersection(self, tangent_len: float) -> float:
-        sketch = self._create_sketch(tangent_len=tangent_len)
-        edges = sketch.edges().filter_by(GeomType.BEZIER)
-        assert len(edges) == 1
-
-        bezier_edge = edges[0]
-        intersection_points = bezier_edge.find_intersection_points(Axis.Y)
-        assert len(intersection_points) == 1
-
-        y_interseciton = intersection_points[0].Y
-        return y_interseciton
-
-    def _create_sketch(self, tangent_len: float) -> Sketch:
-        bezier = self._create_bezier(tangent_len=tangent_len)
-
-        lines = Curve() + [Line((0, 0), bezier@0), bezier, Line(bezier@1, (0, 0))]
-        face = make_face(lines)
-        return Pos(X=-self._x1) * face
-
-    def _create_bezier(self, tangent_len: float) -> Line:
-        x_max, y_max = self._x_max, self._y_max
-
-        return Bezier((0, y_max),
-                      (tangent_len, y_max),
-                      (x_max, tangent_len),
-                      (x_max, 0))
-
-@dataclass
-class ArcParameter:
-    p1: Point
-    p2: Point
-    r: float
-
-
-class ArcFilledRectangle:
-    """ A rectangle with consists of 8 arcs 
-
-    Big arcss at the sides, small arcs in the corners.
-    Top + bottom arc have the same radius
-    Left + right arc have the same radius
-    The corner arcs have all the same radius
-    """
-    def __init__(self, width: float, height: float, radius_horizontal: float, radius_vertical: float, radius_corners: float):
-        assert width >= height  # make the implementation easier
-        assert radius_horizontal > height / 2
-        assert radius_corners < min(height / 2, radius_vertical)
-         
-        self._width = width
-        self._height = height
-        self._radius_horizontal = radius_horizontal
-        self._radius_vertical = radius_vertical
-        self._radius_corners = radius_corners
-
-    def iter_arc_parameters(self) -> Iterator[ArcParameter]:
-        w, h = self._width, self._height
-        rh = self._radius_horizontal
-        rv = self._radius_vertical
-        rc = self._radius_corners
-
-        # centers
-        c1y = h/2 - rh  # c1x == 0
-        c2x = w/2 - rv  # c2y == 0
-
-        # side length of triangle
-        a = rh - rc
-        b = rv - rc
-        c = math.hypot(c2x, c1y)  # distance of both centers
-
-        k = (b**2 - a**2 + c**2) / (2 * c**2)
-        xd = k * c2x
-        yd = k * -c1y
-        
-        h2 = math.sqrt(b**2 - (k * c)**2)
-
-        # center of corner circle (2 possible solutions)
-        c3x1 = k * c2x + c1y / c * h2
-        c3x2 = k * c2x - c1y / c * h2
-        c3y1 = -k * c1y + c2x / c * h2
-        c3y2 = -k * c1y - c2x / c * h2
-
-
-
-         
 
 
 if __name__ == '__main__':
