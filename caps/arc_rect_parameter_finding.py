@@ -53,22 +53,27 @@ def show_bottom_results():
     bezier_bottom = create_bezier_face(klp_lame_data.saddle.BOTTOM_BEZIER_POINTS)
     show_object(bezier_bottom, name='bezier_bottom')
 
-    rh, rv, rc = 70, 38, 3.2
-    rect = create_arc_rect(width=17.5, height=16.5, radius_front_back=rh, radius_left_right=rv, radius_corner=rc)
+    # manuel found
+    arc_params = ArcRectParameters(radius_front_back=70, radius_left_right=38, radius_corner=3.2)
+    rect = create_arc_rect(width=17.5, height=16.5, params=arc_params)
     show_object(rect, name="arc-rect-manu")
 
-    #rh, rv, rc = 127.77364364, 49.05397903, 3.95642961  # curve dist
+    # curve dist
+    # arc_params = ArcRectParameters(radius_front_back=127.77364364, radius_left_right=49.05397903, radius_corner=3.95642961)
 
-    rh, rv, rc = 82.17270862, 42.35694325, 3.49574271  # area diff of poly
-    rect = create_arc_rect(width=17.5, height=16.5, radius_front_back=rh, radius_left_right=rv, radius_corner=rc)
+    # area diff of poly
+    arc_params = ArcRectParameters(radius_front_back=82.17270862, radius_left_right=42.35694325, radius_corner=3.49574271)
+    rect = create_arc_rect(width=17.5, height=16.5, params=arc_params)
     show_object(rect, name="arc-rect-area-poly")
 
-    rh, rv, rc = 70.02322301, 39.20389013, 3.39182747  # max dist of poly
-    rect = create_arc_rect(width=17.5, height=16.5, radius_front_back=rh, radius_left_right=rv, radius_corner=rc)
+    # max dist of poly
+    arc_params = ArcRectParameters(radius_front_back=70.02322301, radius_left_right=39.20389013, radius_corner=3.39182747)
+    rect = create_arc_rect(width=17.5, height=16.5, params=arc_params)
     show_object(rect, name="arc-rect-max-dist-poly")
 
-    rh, rv, rc = 74.836244, 41.30011255, 3.46418388  # sum of poly square dist
-    rect = create_arc_rect(width=17.5, height=16.5, radius_front_back=rh, radius_left_right=rv, radius_corner=rc)
+    # sum of poly square dist
+    arc_params = ArcRectParameters(radius_front_back=74.836244, radius_left_right=41.30011255, radius_corner=3.46418388)
+    rect = create_arc_rect(width=17.5, height=16.5, params=arc_params)
     show_object(rect, name="arc-rect-sum-of-square-poly")
 
 
@@ -76,8 +81,8 @@ def show_top_results():
     bezier_bottom = create_bezier_face(klp_lame_data.saddle.TOP_BEZIER_POINTS)
     show_object(bezier_bottom, name='bezier_bottom')
 
-    rh, rv, rc = 25.4812902, 17.01983806, 3.55100056
-    rect = create_arc_rect(width=14.0, height=13.0, radius_front_back=rh, radius_left_right=rv, radius_corner=rc)
+    arc_params = ArcRectParameters(radius_front_back=25.4812902, radius_left_right=17.01983806, radius_corner=3.55100056)
+    rect = create_arc_rect(width=14.0, height=13.0, params=arc_params)
     show_object(rect, name="arc-rect-sum-of-square-poly")
      
 
@@ -145,10 +150,7 @@ class ArcRectParametersFinder:
         width = 2 * max(p1.X, p2.X)
         height = 2 * max(p1.Y, p2.Y)
 
-        arc_rect = create_arc_rect(width=width, height=height,
-                                   radius_front_back=arc_rect_params.radius_front_back, 
-                                   radius_left_right=arc_rect_params.radius_left_right, 
-                                   radius_corner=arc_rect_params.radius_corner)
+        arc_rect = create_arc_rect(width=width, height=height, params=arc_rect_params)
         arc_rect -= Pos(X=-50) * Rectangle(100, 100)
         arc_rect -= Pos(Y=-50) * Rectangle(100, 100)
         rect_edges: list[Edge] = arc_rect.edges().filter_by(GeomType.CIRCLE)
@@ -228,9 +230,6 @@ class CurveDiffCalculator:
         self._arc_rect_params = arc_rect_params
 
     def calc_diff_value(self) -> float:
-        rh = self._arc_rect_params.radius_front_back
-        rv = self._arc_rect_params.radius_left_right
-        rc = self._arc_rect_params.radius_corner
         bezier = self._bezier_curve
 
         p1 = bezier@0
@@ -242,7 +241,7 @@ class CurveDiffCalculator:
         n = 16
         bezier_points = [bezier@(i / n) for i in range(n + 1)]
 
-        arc_rect = create_arc_rect(width=width, height=height, radius_front_back=rh, radius_left_right=rv, radius_corner=rc)
+        arc_rect = create_arc_rect(width=width, height=height, params=self._arc_rect_params)
         arc_rect -= Pos(X=-50) * Rectangle(100, 100)
         arc_rect -= Pos(Y=-50) * Rectangle(100, 100)
         rect_edges = arc_rect.edges().filter_by(GeomType.CIRCLE)

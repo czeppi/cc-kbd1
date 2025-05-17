@@ -53,12 +53,19 @@ class saddle:  # use small letter, cause this acts as a namespace
         (9.71, 2.14),
         (14.0, 2.147),
         ]
+    RIM_HEIGHT = 2.0
+    RIM_THICKNESS = 0.85
     
 
 class choc_stem:  # use small letter, cause this acts as a namespace
-    HEIGHT = None  # z-axis, todo
-    WIDTH = None  # x-xis, todo
-    DEEP = None  # y-axis, todo
+    Z_MIN = 0.5
+    Z_MAX = 3.6
+    X_MIN = 2.28  # the right stem
+    X_MAX = 3.42  # the right stem
+    Y_MIN = -1.47
+    Y_MAX = 1.47
+    BOTTOM_FILLET_RADIUS = 0.2
+    TOP_FILLET_RADIUS = 0.25
 
 
 class _ExtraBezierPoints:  # not used, only for completeness
@@ -73,13 +80,6 @@ class _ExtraBezierPoints:  # not used, only for completeness
         (8.705, -2.606), 
         (8.485, -4.304), 
         (7.0, -5.8),
-        ]
-    _SKETCH14_SHAPE1 = [
-        (-7.0, 5.8),    # changed sign of all y values
-        (-4.734, 4.827), 
-        (0.0, 4.8),  
-        (4.734, 4.827), 
-        (7.0, 5.8),
         ]
     _SKETCH15_SHAPE9 = [
         (7.9, 0.0), 
@@ -124,18 +124,4 @@ class _ExtraBezierPoints:  # not used, only for completeness
         (6.830, -5.734), (7.059, -5.144), (7.193, -4.194),
         (7.347, -3.098), (7.4, -1.558), (7.4, 0.0),
         ]
-    _SKETCH19 = [
-        (-14.0, 2.15),
-        (-9.710, 2.142),
-        (-8.4, 3.309),
-        (-7.0, 3.8),
-        (-5.617, 4.302),
-        (-4.180, 4.793),
-        (0.0, 4.8),
-        (4.181, 4.793),
-        (5.618, 4.300),
-        (7.0, 3.799),
-        (8.4, 3.307),
-        (9.71, 2.14),
-        (14.0, 2.147),
-        ]
+

@@ -5,7 +5,7 @@ from build123d import Box, Part, Pos, Plane, Axis, Sketch, Polyline, Bezier, Cur
 from ocp_vscode import show_object
 
 from base import OUTPUT_DPATH, Point
-from arc_rect import create_arc_rect2, ArcRectParameters
+from arc_rect import create_arc_rect, ArcRectParameters
 import klp_lame_data
 
 
@@ -48,6 +48,9 @@ class LameSaddleKeyCapCreator:
         assert isinstance(part, Part)
 
         return part
+    
+    def _create_rim_neg_part(self, cap_body: Part) -> Part:
+        pass
         
     def _create_sweep_part(self) -> Part:
         face = Plane.front * self._create_face_to_sweep()
@@ -95,9 +98,9 @@ class CapBodyCreator:
         width_bottom, width_top = 2 * self._x_max_bottom, 2 * self._x_max_top
         deep_bottom, deep_top = 2 * self._y_max_bottom, 2 * self._y_max_top
 
-        face1 = Pos(Z=1.3) * create_arc_rect2(width=width_bottom, height=deep_bottom, params=self._bottom_arc_rect_params)
+        face1 = Pos(Z=1.3) * create_arc_rect(width=width_bottom, height=deep_bottom, params=self._bottom_arc_rect_params)
         face2 = Pos(Z=3.55) * self._create_center_arc_rect()
-        face3 = Pos(Z=5.8) * create_arc_rect2(width=width_top, height=deep_top, params=self._top_arc_rect_params)
+        face3 = Pos(Z=5.8) * create_arc_rect(width=width_top, height=deep_top, params=self._top_arc_rect_params)
         faces = Sketch() + [face1, face2, face3]
         return loft(faces)
 
@@ -130,7 +133,7 @@ class CapBodyCreator:
         deep_bottom, deep_top = 2 * self._y_max_bottom, 2 * self._y_max_top
         deep = back_side_helper.calc_value_at_z(z=z_center, value_bottom=deep_bottom, value_top=deep_top)
         
-        return create_arc_rect2(width=width, 
+        return create_arc_rect(width=width, 
                                 height=deep, 
                                 params=ArcRectParameters(radius_front_back=ry, 
                                                          radius_left_right=rx, 
