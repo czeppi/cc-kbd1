@@ -1,6 +1,6 @@
 from typing import Iterator
 
-from build123d import export_stl, loft, make_face, extrude, sweep, new_edges, fillet, mirror
+from build123d import export_stl, loft, make_face, sweep, new_edges, fillet, offset
 from build123d import Box, Part, Pos, Plane, Axis, Sketch, Polyline, Bezier, Curve
 from ocp_vscode import show_object
 
@@ -36,9 +36,16 @@ class LameSaddleKeyCapCreator:
 
     def _create_cap(self) -> Part:
         cap_body = CapBodyCreator().create()
+        rim_neg_part = self._create_rim_neg_part(cap_body)
+        return rim_neg_part
+    
+        cap_body += rim_neg_part
+
+
         sweep_part = self._create_sweep_part()
 
         sweeped_cap_body = cap_body - sweep_part
+        return cap_body
 
         edges = new_edges(cap_body, sweep_part, combined=sweeped_cap_body)
         part = fillet(edges, 1.26)
@@ -50,7 +57,10 @@ class LameSaddleKeyCapCreator:
         return part
     
     def _create_rim_neg_part(self, cap_body: Part) -> Part:
-        pass
+        rim_neg_part = cap_body - Pos(Z=50 + klp_lame_data.choc_stem.Z_MAX) * Box(100, 100, 100)
+        return offset(rim_neg_part, amount=-1.0) #, openings=topf)
+        box = Box(40, 20, 10)
+        return offset(box, amount=-4.9)
         
     def _create_sweep_part(self) -> Part:
         face = Plane.front * self._create_face_to_sweep()
@@ -92,16 +102,14 @@ class CapBodyCreator:
         deep_bottom, deep_top = 2 * self._y_max_bottom, 2 * self._y_max_top
 
         face1 = Pos(Z=1.3) * create_arc_rect(width=width_bottom, height=deep_bottom, params=self._bottom_arc_rect_params)
-        face2 = Pos(Z=3.55) * self._create_center_arc_rect()
+        face2 = Pos(Z=3.55) * self._create_center_arc_rect(z=(self._z_min + self._z_max) / 2)
         face3 = Pos(Z=5.8) * create_arc_rect(width=width_top, height=deep_top, params=self._top_arc_rect_params)
         faces = Sketch() + [face1, face2, face3]
         return loft(faces)
 
-    def _create_center_arc_rect(self) -> Sketch:
+    def _create_center_arc_rect(self, z: float) -> Sketch:
         right_bezier = Bezier(klp_lame_data.saddle.RIGHT_BEZIER_POINTS)
         back_bezier = Bezier(klp_lame_data.saddle.BACK_BEZIER_POINTS)
-
-        z_center = (self._z_min + self._z_max) / 2
 
         right_side_helper = CapSideHelper(bezier=right_bezier)
         back_side_helper = CapSideHelper(bezier=back_bezier)
@@ -110,21 +118,21 @@ class CapBodyCreator:
         top_params = self._top_arc_rect_params
 
         rx_bottom, rx_top = bottom_params.radius_left_right, top_params.radius_left_right
-        rx = right_side_helper.calc_value_at_z(z=z_center, value_bottom=rx_bottom, value_top=rx_top)
+        rx = right_side_helper.calc_value_at_z(z=z, value_bottom=rx_bottom, value_top=rx_top)
 
         ry_bottom, ry_top = bottom_params.radius_front_back, top_params.radius_front_back
-        ry = back_side_helper.calc_value_at_z(z=z_center, value_bottom=ry_bottom, value_top=ry_top)
+        ry = back_side_helper.calc_value_at_z(z=z, value_bottom=ry_bottom, value_top=ry_top)
 
         rc_bottom, rc_top = bottom_params.radius_corner, top_params.radius_corner
-        rc1 = right_side_helper.calc_value_at_z(z=z_center, value_bottom=rc_bottom, value_top=rc_top)
-        rc2 = back_side_helper.calc_value_at_z(z=z_center, value_bottom=rc_bottom, value_top=rc_top)
+        rc1 = right_side_helper.calc_value_at_z(z=z, value_bottom=rc_bottom, value_top=rc_top)
+        rc2 = back_side_helper.calc_value_at_z(z=z, value_bottom=rc_bottom, value_top=rc_top)
         rc = (rc1 + rc2) / 2
 
         width_bottom, width_top = 2 * self._x_max_bottom, 2 * self._x_max_top
-        width = right_side_helper.calc_value_at_z(z=z_center, value_bottom=width_bottom, value_top=width_top)
+        width = right_side_helper.calc_value_at_z(z=z, value_bottom=width_bottom, value_top=width_top)
 
         deep_bottom, deep_top = 2 * self._y_max_bottom, 2 * self._y_max_top
-        deep = back_side_helper.calc_value_at_z(z=z_center, value_bottom=deep_bottom, value_top=deep_top)
+        deep = back_side_helper.calc_value_at_z(z=z, value_bottom=deep_bottom, value_top=deep_top)
         
         return create_arc_rect(width=width, 
                                 height=deep, 
