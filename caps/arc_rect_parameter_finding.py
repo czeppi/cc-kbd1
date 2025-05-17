@@ -20,7 +20,7 @@ from ocp_vscode import show_object
 import scipy.optimize
 
 from base import Point
-from klp_lame_data import KlpLameCapBodyData
+import klp_lame_data
 from arc_rect import ArcRectParameters, create_arc_rect
 
 
@@ -34,13 +34,13 @@ class SearchMethod(Enum):
 
 
 def main():
-    #find_arc_rect_parameters(SearchMethod.SUM_OF_SQUARES_OF_DIST_OF_POLYGONS)
-    show_top_results()
+    find_arc_rect_parameters(SearchMethod.SUM_OF_SQUARES_OF_DIST_OF_POLYGONS)
+    #show_top_results()
 
 
 def find_arc_rect_parameters(search_method: SearchMethod) -> ArcRectParameters:
-    # points = KlpLameCapBodyData.BOTTOM_BEZIER_POINTS
-    points = KlpLameCapBodyData.TOP_BEZIER_POINTS
+    # points = klp_lame_data.saddle.BOTTOM_BEZIER_POINTS
+    points = klp_lame_data.saddle.TOP_BEZIER_POINTS
     bezier = Bezier(points[:4]) + Bezier(points[3:])
 
     param_finder = ArcRectParametersFinder(bezier_curve=bezier, search_method=search_method)
@@ -50,34 +50,34 @@ def find_arc_rect_parameters(search_method: SearchMethod) -> ArcRectParameters:
 
 
 def show_bottom_results():
-    bezier_bottom = create_bezier_face(KlpLameCapBodyData.BOTTOM_BEZIER_POINTS)
+    bezier_bottom = create_bezier_face(klp_lame_data.saddle.BOTTOM_BEZIER_POINTS)
     show_object(bezier_bottom, name='bezier_bottom')
 
     rh, rv, rc = 70, 38, 3.2
-    rect = create_arc_rect(width=17.5, height=16.5, radius_horziontal=rh, radius_vertical=rv, radius_corner=rc)
+    rect = create_arc_rect(width=17.5, height=16.5, radius_front_back=rh, radius_left_right=rv, radius_corner=rc)
     show_object(rect, name="arc-rect-manu")
 
     #rh, rv, rc = 127.77364364, 49.05397903, 3.95642961  # curve dist
 
     rh, rv, rc = 82.17270862, 42.35694325, 3.49574271  # area diff of poly
-    rect = create_arc_rect(width=17.5, height=16.5, radius_horziontal=rh, radius_vertical=rv, radius_corner=rc)
+    rect = create_arc_rect(width=17.5, height=16.5, radius_front_back=rh, radius_left_right=rv, radius_corner=rc)
     show_object(rect, name="arc-rect-area-poly")
 
     rh, rv, rc = 70.02322301, 39.20389013, 3.39182747  # max dist of poly
-    rect = create_arc_rect(width=17.5, height=16.5, radius_horziontal=rh, radius_vertical=rv, radius_corner=rc)
+    rect = create_arc_rect(width=17.5, height=16.5, radius_front_back=rh, radius_left_right=rv, radius_corner=rc)
     show_object(rect, name="arc-rect-max-dist-poly")
 
     rh, rv, rc = 74.836244, 41.30011255, 3.46418388  # sum of poly square dist
-    rect = create_arc_rect(width=17.5, height=16.5, radius_horziontal=rh, radius_vertical=rv, radius_corner=rc)
+    rect = create_arc_rect(width=17.5, height=16.5, radius_front_back=rh, radius_left_right=rv, radius_corner=rc)
     show_object(rect, name="arc-rect-sum-of-square-poly")
 
 
 def show_top_results():
-    bezier_bottom = create_bezier_face(KlpLameCapBodyData.TOP_BEZIER_POINTS)
+    bezier_bottom = create_bezier_face(klp_lame_data.saddle.TOP_BEZIER_POINTS)
     show_object(bezier_bottom, name='bezier_bottom')
 
     rh, rv, rc = 25.4812902, 17.01983806, 3.55100056
-    rect = create_arc_rect(width=14.0, height=13.0, radius_horziontal=rh, radius_vertical=rv, radius_corner=rc)
+    rect = create_arc_rect(width=14.0, height=13.0, radius_front_back=rh, radius_left_right=rv, radius_corner=rc)
     show_object(rect, name="arc-rect-sum-of-square-poly")
      
 
@@ -97,8 +97,8 @@ class ArcRectParametersFinder:
         small_r_min = self._SMALL_RADIUS_MIN
         small_r_max = self._SMALL_RADIUS_MAX
 
-        #start_values = [70, 38, 3.2]  # radius_horizontal, radius_vertical, radius_corner
-        start_values = [60, 40, 2.5]  # radius_horizontal, radius_vertical, radius_corner
+        #start_values = [70, 38, 3.2]  # radius_front_back, radius_left_right, radius_corner
+        start_values = [60, 40, 2.5]  # radius_front_back, radius_left_right, radius_corner
 
         result = scipy.optimize.minimize(
             fun=self._calc_error_with_polygon_distances,
@@ -111,13 +111,13 @@ class ArcRectParametersFinder:
         print(f'success: {result.success}, best_parameters: {result.x}')
         
         rh, rv, rc = result.x
-        return ArcRectParameters(radius_horizontal=rh,
-                                 radius_vertical=rv,
+        return ArcRectParameters(radius_front_back=rh,
+                                 radius_left_right=rv,
                                  radius_corner=rc)
     
     def _calc_error_with_curve_diff(self, params: tuple[float, float, float]) -> float:
         rh, rv, rc = params
-        arc_rect_params = ArcRectParameters(radius_horizontal=rh, radius_vertical=rv, radius_corner=rc)
+        arc_rect_params = ArcRectParameters(radius_front_back=rh, radius_left_right=rv, radius_corner=rc)
 
         diff_calc = CurveDiffCalculator(bezier_curve=self._bezier_curve, 
                                         arc_rect_params=arc_rect_params)
@@ -125,7 +125,7 @@ class ArcRectParametersFinder:
     
     def _calc_error_with_polygon_distances(self, params: tuple[float, float, float]) -> float:
         rh, rv, rc = params
-        arc_rect_params = ArcRectParameters(radius_horizontal=rh, radius_vertical=rv, radius_corner=rc)
+        arc_rect_params = ArcRectParameters(radius_front_back=rh, radius_left_right=rv, radius_corner=rc)
 
         n = 17
         bezier = self._bezier_curve
@@ -146,8 +146,8 @@ class ArcRectParametersFinder:
         height = 2 * max(p1.Y, p2.Y)
 
         arc_rect = create_arc_rect(width=width, height=height,
-                                   radius_horziontal=arc_rect_params.radius_horizontal, 
-                                   radius_vertical=arc_rect_params.radius_vertical, 
+                                   radius_front_back=arc_rect_params.radius_front_back, 
+                                   radius_left_right=arc_rect_params.radius_left_right, 
                                    radius_corner=arc_rect_params.radius_corner)
         arc_rect -= Pos(X=-50) * Rectangle(100, 100)
         arc_rect -= Pos(Y=-50) * Rectangle(100, 100)
@@ -228,8 +228,8 @@ class CurveDiffCalculator:
         self._arc_rect_params = arc_rect_params
 
     def calc_diff_value(self) -> float:
-        rh = self._arc_rect_params.radius_horizontal
-        rv = self._arc_rect_params.radius_vertical
+        rh = self._arc_rect_params.radius_front_back
+        rv = self._arc_rect_params.radius_left_right
         rc = self._arc_rect_params.radius_corner
         bezier = self._bezier_curve
 
@@ -242,7 +242,7 @@ class CurveDiffCalculator:
         n = 16
         bezier_points = [bezier@(i / n) for i in range(n + 1)]
 
-        arc_rect = create_arc_rect(width=width, height=height, radius_horziontal=rh, radius_vertical=rv, radius_corner=rc)
+        arc_rect = create_arc_rect(width=width, height=height, radius_front_back=rh, radius_left_right=rv, radius_corner=rc)
         arc_rect -= Pos(X=-50) * Rectangle(100, 100)
         arc_rect -= Pos(Y=-50) * Rectangle(100, 100)
         rect_edges = arc_rect.edges().filter_by(GeomType.CIRCLE)

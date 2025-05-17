@@ -1,5 +1,6 @@
 
-class KlpLameCapBodyData:
+class saddle:  # use small letter, cause this acts as a namespace
+
     BOTTOM_BEZIER_POINTS = [  # XY plane 
         (0.0, 8.25),
         (3.352, 8.219),
@@ -30,14 +31,14 @@ class KlpLameCapBodyData:
         (7.985, 4.304),
         (6.5, 5.8),
         ]
-    SWEEP_FACE_BEZIER_POINTS = [  # SKETCH14_SHAPE1
-        (-7.0, 5.8),    # changed sign of all y values
+    SWEEP_FACE_BEZIER_POINTS = [  # XZ plane (=Sketch14_shape1)
+        (-7.0, 5.8),              # changed sign of all y values
         (-4.734, 4.827), 
         (0.0, 4.8),  
         (4.734, 4.827), 
         (7.0, 5.8),
         ]
-    SWEEP_PATH_BEZIER_POINTS = [  # _SKETCH19
+    SWEEP_PATH_BEZIER_POINTS = [  # YZ plane (=sketch19)
         (-14.0, 2.15),
         (-9.710, 2.142),
         (-8.4, 3.309),
@@ -52,6 +53,12 @@ class KlpLameCapBodyData:
         (9.71, 2.14),
         (14.0, 2.147),
         ]
+    
+
+class choc_stem:  # use small letter, cause this acts as a namespace
+    HEIGHT = None  # z-axis, todo
+    WIDTH = None  # x-xis, todo
+    DEEP = None  # y-axis, todo
 
 
 class _ExtraBezierPoints:  # not used, only for completeness
