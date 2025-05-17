@@ -58,17 +58,10 @@ class LameSaddleKeyCapCreator:
         return sweep(face, path=Plane.right * sweep_path)
     
     def _create_sweep_path(self):
-        points = klp_lame_data.saddle.SWEEP_PATH_BEZIER_POINTS
-        bezier = Curve() + [Bezier(points[:4]), 
-                            Bezier(points[3:7]),
-                            Bezier(points[6:10]),
-                            Bezier(points[9:])]
-        return bezier
+        return Curve() + [Bezier(points) for points in klp_lame_data.saddle.SWEEP_PATH_BEZIER_POINT_LISTS]
     
     def _create_face_to_sweep(self) -> Sketch:
-        points = klp_lame_data.saddle.SWEEP_FACE_BEZIER_POINTS
-        bezier = Bezier(points[:3]) + Bezier(points[2:])  # quad bezier curves!
-
+        bezier = Curve() + [Bezier(points) for points in klp_lame_data.saddle.SWEEP_FACE_BEZIER_POINT_LISTS]
         p1 = bezier@0
         p2 = bezier@1
 
@@ -190,7 +183,6 @@ class CapSideHelper:
                 t2 = t
         else:
             raise Exception('y value not found')    
-
 
 
 if __name__ == '__main__':

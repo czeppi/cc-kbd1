@@ -34,14 +34,14 @@ class SearchMethod(Enum):
 
 
 def main():
-    find_arc_rect_parameters(SearchMethod.SUM_OF_SQUARES_OF_DIST_OF_POLYGONS)
-    #show_top_results()
+    #find_arc_rect_parameters(SearchMethod.SUM_OF_SQUARES_OF_DIST_OF_POLYGONS)
+    show_top_results()
 
 
 def find_arc_rect_parameters(search_method: SearchMethod) -> ArcRectParameters:
-    # points = klp_lame_data.saddle.BOTTOM_BEZIER_POINTS
-    points = klp_lame_data.saddle.TOP_BEZIER_POINTS
-    bezier = Bezier(points[:4]) + Bezier(points[3:])
+    # point_lists = klp_lame_data.saddle.BOTTOM_BEZIER_POINT_LISTS
+    point_lists = klp_lame_data.saddle.TOP_BEZIER_POINT_LISTS
+    bezier = Curve() + [Bezier(points) for points in point_lists]
 
     param_finder = ArcRectParametersFinder(bezier_curve=bezier, search_method=search_method)
     best_params = param_finder.find_parameters()
@@ -50,8 +50,8 @@ def find_arc_rect_parameters(search_method: SearchMethod) -> ArcRectParameters:
 
 
 def show_bottom_results():
-    bezier_bottom = create_bezier_face(klp_lame_data.saddle.BOTTOM_BEZIER_POINTS)
-    show_object(bezier_bottom, name='bezier_bottom')
+    bezier = create_bezier_face(klp_lame_data.saddle.BOTTOM_BEZIER_POINT_LISTS)
+    show_object(bezier, name='bezier_bottom')
 
     # manuel found
     arc_params = ArcRectParameters(radius_front_back=70, radius_left_right=38, radius_corner=3.2)
@@ -78,8 +78,8 @@ def show_bottom_results():
 
 
 def show_top_results():
-    bezier_bottom = create_bezier_face(klp_lame_data.saddle.TOP_BEZIER_POINTS)
-    show_object(bezier_bottom, name='bezier_bottom')
+    bezier = create_bezier_face(klp_lame_data.saddle.TOP_BEZIER_POINT_LISTS)
+    show_object(bezier, name='bezier_bottom')
 
     arc_params = ArcRectParameters(radius_front_back=25.4812902, radius_left_right=17.01983806, radius_corner=3.55100056)
     rect = create_arc_rect(width=14.0, height=13.0, params=arc_params)
@@ -292,10 +292,8 @@ class CurveDiffCalculator:
             raise Exception(f'value not found')
 
 
-def create_bezier_face(points: list[Point]) -> Sketch:
-    assert len(points) == 7
-
-    bezier = Bezier(points[:4]) + Bezier(points[3:])
+def create_bezier_face(point_lists: list[list[Point]]) -> Sketch:
+    bezier = Curve() + [Bezier(points) for points in point_lists]
     bezier += mirror(bezier, Plane.XZ)
     bezier += mirror(bezier, Plane.YZ)
 
