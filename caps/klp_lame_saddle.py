@@ -1,10 +1,11 @@
 from typing import Iterator
+import copy
 
-from build123d import export_stl, loft, make_face, sweep, new_edges, fillet, offset
+from build123d import export_stl, loft, make_face, sweep, new_edges, fillet
 from build123d import Box, Part, Pos, Plane, Axis, Sketch, Polyline, Bezier, Curve
 from ocp_vscode import show_object
 
-from base import OUTPUT_DPATH, Point
+from base import OUTPUT_DPATH
 from arc_rect import create_arc_rect, ArcRectParameters
 import klp_lame_data
 
@@ -35,33 +36,22 @@ class LameSaddleKeyCapCreator:
         return self._create_cap()
 
     def _create_cap(self) -> Part:
-        cap_body = CapBodyCreator().create()
-        rim_neg_part = self._create_rim_neg_part(cap_body)
-        return rim_neg_part
+        cap_body = CapBodyCreator().create_body() - CapBodyCreator().create_neg_rim()
     
-        cap_body += rim_neg_part
-
-
         sweep_part = self._create_sweep_part()
-
         sweeped_cap_body = cap_body - sweep_part
-        return cap_body
-
         edges = new_edges(cap_body, sweep_part, combined=sweeped_cap_body)
-        part = fillet(edges, 1.26)
+        cap = fillet(edges, klp_lame_data.saddle.SWEEP_FILLET_RADIUS)
 
-        edges = part.edges().group_by(Axis.Z)[0]
-        part = fillet(edges, 0.25)
-        assert isinstance(part, Part)
+        edges = cap.edges().group_by(Axis.Z)[0]
+        cap_without_stems = fillet(edges, radius=klp_lame_data.saddle.RIM_FILLET_RADIUS)
 
-        return part
+        stems = Part() + list(self._iter_stems())
+        cap_with_stems = cap_without_stems + stems
+        edges = new_edges(cap_without_stems, stems, combined=cap_with_stems)
+
+        return fillet(edges, radius=klp_lame_data.choc_stem.TOP_FILLET_RADIUS)
     
-    def _create_rim_neg_part(self, cap_body: Part) -> Part:
-        rim_neg_part = cap_body - Pos(Z=50 + klp_lame_data.choc_stem.Z_MAX) * Box(100, 100, 100)
-        return offset(rim_neg_part, amount=-1.0) #, openings=topf)
-        box = Box(40, 20, 10)
-        return offset(box, amount=-4.9)
-        
     def _create_sweep_part(self) -> Part:
         face = Plane.front * self._create_face_to_sweep()
         sweep_path = self._create_sweep_path()
@@ -78,12 +68,21 @@ class LameSaddleKeyCapCreator:
         polyline = Polyline([(p1.X, p1.Y), (p1.X, p1.Y + 3), (p2.X, p2.Y + 3), (p2.X, p2.Y)])
         return make_face(bezier + polyline)
 
-    def _iter_feet(self) -> Iterator[Part]:
-        pass
+    def _iter_stems(self) -> Iterator[Part]:
+        stem_data = klp_lame_data.choc_stem
 
-    def _create_foot(self) -> Part:
-        return Box()
+        x_len = stem_data.X_MAX - stem_data.X_MIN
+        y_len = stem_data.Y_MAX - stem_data.Y_MIN
+        z_len = stem_data.Z_MAX - stem_data.Z_MIN + 1.0  # increase high to support top fillet later
+        
+        stem_box = Pos(Z=z_len / 2 + stem_data.Z_MIN) * Box(x_len, y_len, z_len)
+        edges = stem_box.edges().group_by(Axis.Z)[:2]
+        stem_box = fillet(edges, radius=klp_lame_data.choc_stem.BOTTOM_FILLET_RADIUS)
     
+        x_off = x_len / 2 + stem_data.X_MIN
+        yield Pos(X=-x_off) * copy.copy(stem_box)
+        yield Pos(X=x_off) * copy.copy(stem_box)
+
 
 class CapBodyCreator:
     
@@ -94,20 +93,39 @@ class CapBodyCreator:
         self._y_max_top = 6.5
         self._z_min = 1.3
         self._z_max = 5.8
-        self._bottom_arc_rect_params = ArcRectParameters(radius_front_back=74.836, radius_left_right=41.300, radius_corner=3.464)
-        self._top_arc_rect_params = ArcRectParameters(radius_front_back=25.481, radius_left_right=17.020, radius_corner=3.551)
+        self._bottom_arc_rect_params = ArcRectParameters(radius_front_back=74.836, radius_left_right=41.300, radius_corner=3.464)  # parameters from arc_rect_paramter_finder
+        self._top_arc_rect_params = ArcRectParameters(radius_front_back=25.481, radius_left_right=17.020, radius_corner=3.551)  # parameters from arc_rect_paramter_finder
    
-    def create(self) -> Part:
+    def create_body(self) -> Part:
         width_bottom, width_top = 2 * self._x_max_bottom, 2 * self._x_max_top
         deep_bottom, deep_top = 2 * self._y_max_bottom, 2 * self._y_max_top
 
-        face1 = Pos(Z=1.3) * create_arc_rect(width=width_bottom, height=deep_bottom, params=self._bottom_arc_rect_params)
-        face2 = Pos(Z=3.55) * self._create_center_arc_rect(z=(self._z_min + self._z_max) / 2)
-        face3 = Pos(Z=5.8) * create_arc_rect(width=width_top, height=deep_top, params=self._top_arc_rect_params)
+        z_min, z_max = self._z_min, self._z_max
+        z_centered = (z_min + z_max) / 2
+
+        face1 = Pos(Z=z_min) * create_arc_rect(width=width_bottom, height=deep_bottom, params=self._bottom_arc_rect_params)
+        face2 = Pos(Z=z_centered) * self._create_center_arc_rect(z=z_centered)
+        face3 = Pos(Z=z_max) * create_arc_rect(width=width_top, height=deep_top, params=self._top_arc_rect_params)
         faces = Sketch() + [face1, face2, face3]
         return loft(faces)
+    
+    def create_neg_rim(self) -> Part:
+        thickness = klp_lame_data.saddle.RIM_THICKNESS
 
-    def _create_center_arc_rect(self, z: float) -> Sketch:
+        width_bottom = 2 * (self._x_max_bottom - thickness)
+        deep_bottom = 2 * (self._y_max_bottom - thickness)
+        bottom_arc_params = ArcRectParameters(radius_front_back=self._bottom_arc_rect_params.radius_front_back - thickness, 
+                                              radius_left_right=self._bottom_arc_rect_params.radius_left_right - thickness, 
+                                              radius_corner=self._bottom_arc_rect_params.radius_corner - thickness)
+        face1 = Pos(Z=self._z_min) * create_arc_rect(width=width_bottom, height=deep_bottom, params=bottom_arc_params)
+
+        z_rim_top = klp_lame_data.choc_stem.Z_MAX
+        face2 = Pos(Z=z_rim_top) * self._create_center_arc_rect(z=z_rim_top, offset=thickness)
+
+        faces = Sketch() + [face1, face2]
+        return loft(faces)
+
+    def _create_center_arc_rect(self, z: float, offset: float = 0.0) -> Sketch:
         right_bezier = Bezier(klp_lame_data.saddle.RIGHT_BEZIER_POINTS)
         back_bezier = Bezier(klp_lame_data.saddle.BACK_BEZIER_POINTS)
 
@@ -118,21 +136,21 @@ class CapBodyCreator:
         top_params = self._top_arc_rect_params
 
         rx_bottom, rx_top = bottom_params.radius_left_right, top_params.radius_left_right
-        rx = right_side_helper.calc_value_at_z(z=z, value_bottom=rx_bottom, value_top=rx_top)
+        rx = right_side_helper.calc_value_at_z(z=z, value_bottom=rx_bottom, value_top=rx_top) - offset
 
         ry_bottom, ry_top = bottom_params.radius_front_back, top_params.radius_front_back
-        ry = back_side_helper.calc_value_at_z(z=z, value_bottom=ry_bottom, value_top=ry_top)
+        ry = back_side_helper.calc_value_at_z(z=z, value_bottom=ry_bottom, value_top=ry_top) - offset
 
         rc_bottom, rc_top = bottom_params.radius_corner, top_params.radius_corner
         rc1 = right_side_helper.calc_value_at_z(z=z, value_bottom=rc_bottom, value_top=rc_top)
         rc2 = back_side_helper.calc_value_at_z(z=z, value_bottom=rc_bottom, value_top=rc_top)
-        rc = (rc1 + rc2) / 2
+        rc = (rc1 + rc2) / 2 - offset
 
         width_bottom, width_top = 2 * self._x_max_bottom, 2 * self._x_max_top
-        width = right_side_helper.calc_value_at_z(z=z, value_bottom=width_bottom, value_top=width_top)
+        width = right_side_helper.calc_value_at_z(z=z, value_bottom=width_bottom, value_top=width_top) - 2 * offset
 
         deep_bottom, deep_top = 2 * self._y_max_bottom, 2 * self._y_max_top
-        deep = back_side_helper.calc_value_at_z(z=z, value_bottom=deep_bottom, value_top=deep_top)
+        deep = back_side_helper.calc_value_at_z(z=z, value_bottom=deep_bottom, value_top=deep_top) - 2 * offset
         
         return create_arc_rect(width=width, 
                                 height=deep, 

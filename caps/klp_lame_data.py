@@ -31,13 +31,15 @@ class saddle:  # use small letter, cause this acts as a namespace
         [(0.0, 4.8), (4.181, 4.793), (5.618, 4.300), (7.0, 3.799)],
         [(7.0, 3.799), (8.4, 3.307), (9.71, 2.14), (14.0, 2.147)],
     ]
+    SWEEP_FILLET_RADIUS = 1.26
     RIM_HEIGHT = 2.0
     RIM_THICKNESS = 0.85
+    RIM_FILLET_RADIUS = 0.25
     
 
 class choc_stem:  # use small letter, cause this acts as a namespace
-    Z_MIN = 0.5
-    Z_MAX = 3.6
+    Z_MIN = -0.5
+    Z_MAX = 3.3
     X_MIN = 2.28  # the right stem
     X_MAX = 3.42  # the right stem
     Y_MIN = -1.47
