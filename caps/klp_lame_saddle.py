@@ -36,32 +36,10 @@ class LameSaddleKeyCapCreator:
         return self._create_cap()
     
     def _create_cap(self) -> Part:
-        cap_body = CapBodyCreator().create_body() #- CapBodyCreator().create_neg_rim()
-    
-        sweep_part = self._create_sweep_part()
-        sweeped_cap_body = cap_body - sweep_part
-        #return sweeped_cap_body
-
-        edges = new_edges(cap_body, sweep_part, combined=sweeped_cap_body)
-        cap = fillet(edges, klp_lame_data.saddle.SWEEP_FILLET_RADIUS)
-
-        edges = cap.edges().group_by(Axis.Z)[0]
-        cap_without_stems = fillet(edges, radius=klp_lame_data.saddle.RIM_FILLET_RADIUS)
-
-        stems = Part() + list(self._iter_stems())
-        cap_with_stems = cap_without_stems + stems
-        edges = new_edges(cap_without_stems, stems, combined=cap_with_stems)
-
-        return fillet(edges, radius=klp_lame_data.choc_stem.TOP_FILLET_RADIUS)
-
-    def _create_cap_test(self) -> Part:
         cap_body = CapBodyCreator().create_body() - CapBodyCreator().create_neg_rim()
     
-        sweep_part = self._create_sweep_part2()
-        #return sweep_part
-        sweep_part2 = Rot(Z=90) * copy.copy(sweep_part) - Pos(X=50) * Box(100, 100, 100)
-        sweeped_cap_body = cap_body - sweep_part - sweep_part2
-        return sweeped_cap_body
+        sweep_part = self._create_sweep_part()
+        sweeped_cap_body = cap_body - sweep_part #- Pos(X=-10, Y=-10) * Box(20, 20, 20)
 
         edges = new_edges(cap_body, sweep_part, combined=sweeped_cap_body)
         cap = fillet(edges, klp_lame_data.saddle.SWEEP_FILLET_RADIUS)
@@ -73,8 +51,10 @@ class LameSaddleKeyCapCreator:
         cap_with_stems = cap_without_stems + stems
         edges = new_edges(cap_without_stems, stems, combined=cap_with_stems)
 
-        return fillet(edges, radius=klp_lame_data.choc_stem.TOP_FILLET_RADIUS)
-    
+        cap = fillet(edges, radius=klp_lame_data.choc_stem.TOP_FILLET_RADIUS)
+        # cap -= Pos(X=-10, Y=-10) * Box(20, 20, 20)
+        return cap
+
     def _create_sweep_part(self) -> Part:
         face = Plane.front * self._create_face_to_sweep()
         sweep_path = self._create_sweep_path()
@@ -147,7 +127,7 @@ class CapBodyCreator:
                                               radius_corner=self._bottom_arc_rect_params.radius_corner - thickness)
         face1 = Pos(Z=self._z_min) * create_arc_rect(width=width_bottom, height=deep_bottom, params=bottom_arc_params)
 
-        z_rim_top = klp_lame_data.choc_stem.Z_MAX
+        z_rim_top = klp_lame_data.choc_stem.Z_MAX - 0.3
         face2 = Pos(Z=z_rim_top) * self._create_center_arc_rect(z=z_rim_top, offset=thickness)
 
         faces = Sketch() + [face1, face2]
