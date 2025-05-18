@@ -2,7 +2,7 @@ from typing import Iterator
 import copy
 
 from build123d import export_stl, loft, make_face, sweep, new_edges, fillet
-from build123d import Box, Part, Pos, Plane, Axis, Sketch, Polyline, Bezier, Curve
+from build123d import Box, Part, Pos, Rot, Plane, Axis, Sketch, Polyline, Bezier, Curve, Rectangle
 from ocp_vscode import show_object
 
 from base import OUTPUT_DPATH
@@ -34,12 +34,35 @@ class LameSaddleKeyCapCreator:
 
     def create(self) -> Part:
         return self._create_cap()
-
+    
     def _create_cap(self) -> Part:
-        cap_body = CapBodyCreator().create_body() - CapBodyCreator().create_neg_rim()
+        cap_body = CapBodyCreator().create_body() #- CapBodyCreator().create_neg_rim()
     
         sweep_part = self._create_sweep_part()
         sweeped_cap_body = cap_body - sweep_part
+        #return sweeped_cap_body
+
+        edges = new_edges(cap_body, sweep_part, combined=sweeped_cap_body)
+        cap = fillet(edges, klp_lame_data.saddle.SWEEP_FILLET_RADIUS)
+
+        edges = cap.edges().group_by(Axis.Z)[0]
+        cap_without_stems = fillet(edges, radius=klp_lame_data.saddle.RIM_FILLET_RADIUS)
+
+        stems = Part() + list(self._iter_stems())
+        cap_with_stems = cap_without_stems + stems
+        edges = new_edges(cap_without_stems, stems, combined=cap_with_stems)
+
+        return fillet(edges, radius=klp_lame_data.choc_stem.TOP_FILLET_RADIUS)
+
+    def _create_cap_test(self) -> Part:
+        cap_body = CapBodyCreator().create_body() - CapBodyCreator().create_neg_rim()
+    
+        sweep_part = self._create_sweep_part2()
+        #return sweep_part
+        sweep_part2 = Rot(Z=90) * copy.copy(sweep_part) - Pos(X=50) * Box(100, 100, 100)
+        sweeped_cap_body = cap_body - sweep_part - sweep_part2
+        return sweeped_cap_body
+
         edges = new_edges(cap_body, sweep_part, combined=sweeped_cap_body)
         cap = fillet(edges, klp_lame_data.saddle.SWEEP_FILLET_RADIUS)
 
@@ -57,11 +80,16 @@ class LameSaddleKeyCapCreator:
         sweep_path = self._create_sweep_path()
         return sweep(face, path=Plane.right * sweep_path)
     
+    def _create_sweep_part2(self) -> Part:
+        face = Plane.front * Pos(Y=5.8 + 5) * Rectangle(20, 10)
+        sweep_path = self._create_sweep_path()
+        return sweep(face, path=Plane.right * sweep_path)
+    
     def _create_sweep_path(self):
         return Curve() + [Bezier(points) for points in klp_lame_data.saddle.SWEEP_PATH_BEZIER_POINT_LISTS]
     
     def _create_face_to_sweep(self) -> Sketch:
-        bezier = Curve() + [Bezier(points) for points in klp_lame_data.saddle.SWEEP_FACE_BEZIER_POINT_LISTS]
+        bezier = Curve() + [Bezier(points) for points in klp_lame_data.saddle.SWEEP_FACE_BEZIER_POINT_LISTS2]
         p1 = bezier@0
         p2 = bezier@1
 

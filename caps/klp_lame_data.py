@@ -25,6 +25,12 @@ class saddle:  # use small letter, cause this acts as a namespace
         [(-7.0, 5.8), (-4.734, 4.827), (0.0, 4.8)],  # quad bezier curves!
         [(0.0, 4.8), (4.734, 4.827), (7.0, 5.8)],
     ]
+    SWEEP_FACE_BEZIER_POINT_LISTS2 = [  # XZ plane (=Sketch14_shape1), (changed sign of all y values)
+        # [(-9.0, 2.8), (-4.734, 4.773), (0.0, 4.8)],  # quad bezier curves!
+        [(-14.0, 2.15), (-9.710, 2.142), (-8.4, 3.309), (-7.0, 3.8)],
+        [(-7.0, 3.8), (-5.617, 4.302), (-4.180, 4.793), (0.0, 4.8)],
+        [(0.0, 4.8), (4.734, 4.827), (7.0, 5.8)],
+    ]
     SWEEP_PATH_BEZIER_POINT_LISTS = [  # YZ plane (=sketch19)
         [(-14.0, 2.15), (-9.710, 2.142), (-8.4, 3.309), (-7.0, 3.8)],
         [(-7.0, 3.8), (-5.617, 4.302), (-4.180, 4.793), (0.0, 4.8)],
