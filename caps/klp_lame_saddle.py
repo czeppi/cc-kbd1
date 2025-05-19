@@ -7,7 +7,7 @@ from build123d import Box, Part, Pos, Rot, Plane, Axis, Sketch, Polyline, Bezier
 from ocp_vscode import show_object
 
 from base import OUTPUT_DPATH
-from arc_rect import create_arc_rect, ArcRectParameters
+from arc_rect import create_arc_rect, create_arc_rect_variant, ArcRectParameters
 import klp_lame_data
 
 
@@ -18,26 +18,26 @@ class CapKind(Enum):
 
 
 def main():
-    key_cap = create_orig_cap()
+    #key_cap = create_orig_cap()
     key_cap = create_index_normal_cap()
-    key_cap = create_index_big_cap()
+    #key_cap = create_index_big_cap()
     show_object(key_cap)
 
 
 def create_orig_cap() -> None:
-    key_cap = LameSaddleKeyCapCreator(cap_kind=CapKind.ORIG, extra_height=0.5).create()
+    key_cap = LameSaddleKeyCapCreator(cap_kind=CapKind.ORIG, extra_height=0.6).create()
     export_stl(key_cap, OUTPUT_DPATH / 'lame-key-cap-orig.stl')
     return key_cap
 
 
 def create_index_normal_cap() -> None:
-    key_cap = LameSaddleKeyCapCreator(cap_kind=CapKind.INDEX_FINGER_NORMAL_SIZED, extra_height=0.5).create()
+    key_cap = LameSaddleKeyCapCreator(cap_kind=CapKind.INDEX_FINGER_NORMAL_SIZED, extra_height=0.6).create()
     export_stl(key_cap, OUTPUT_DPATH / 'lame-key-cap-index-normal.stl')
     return key_cap
 
 
 def create_index_big_cap() -> None:
-    key_cap = LameSaddleKeyCapCreator(cap_kind=CapKind.INDEX_FINGER_BIG, extra_height=0.5).create()
+    key_cap = LameSaddleKeyCapCreator(cap_kind=CapKind.INDEX_FINGER_BIG, extra_height=0.6).create()
     export_stl(key_cap, OUTPUT_DPATH / 'lame-key-cap-index-big.stl')
     return key_cap
 
@@ -67,13 +67,17 @@ class LameSaddleKeyCapCreator:
         return self._create_cap()
     
     def _create_cap(self) -> Part:
-        body_creator = CapBodyCreator(extra_height=self._extra_height, y_factor=self._y_factor)
-        cap_body = body_creator.create_body() - body_creator.create_neg_rim()
-   
+        body_creator = CapBodyCreator(extra_height=self._extra_height, y_factor=self._y_factor, cap_kind=self._cap_kind)
+        cap_body_without_rim = body_creator.create_body()
+        neg_rim = body_creator.create_neg_rim()
+        cap_body_with_rim = cap_body_without_rim - neg_rim
+        edges = new_edges(cap_body_without_rim, combined=cap_body_with_rim)
+        cap = fillet(edges, radius=0.2)  # at a fillet at the inside of the rim, cause the thickness is very thin at back/left with cap_kind=INDEX_FINGER_NORMAL_SIZED
+  
         sweep_part = self._create_sweep_part()
-        sweeped_cap_body = cap_body - sweep_part #- Pos(X=-10, Y=-10) * Box(20, 20, 20)
+        sweeped_cap_body = cap - sweep_part #- Pos(X=-10, Y=-10) * Box(20, 20, 20)
 
-        edges = new_edges(cap_body, sweep_part, combined=sweeped_cap_body)
+        edges = new_edges(cap, sweep_part, combined=sweeped_cap_body)
         cap = fillet(edges, klp_lame_data.saddle.SWEEP_FILLET_RADIUS)
 
         edges = cap.edges().group_by(Axis.Z)[0]
@@ -84,7 +88,7 @@ class LameSaddleKeyCapCreator:
         edges = new_edges(cap_without_stems, stems, combined=cap_with_stems)
 
         cap = fillet(edges, radius=klp_lame_data.choc_stem.TOP_FILLET_RADIUS)
-        # cap -= Pos(X=-10, Y=-10) * Box(20, 20, 20)
+        # cap -= Pos(X=-10, Y=-5) * Box(20, 20, 20)
         return cap
 
     def _create_sweep_part(self) -> Part:
@@ -127,9 +131,10 @@ class LameSaddleKeyCapCreator:
 
 class CapBodyCreator:
     
-    def __init__(self, y_factor: float = 1.0, extra_height: float = 0.0):
+    def __init__(self, y_factor: float = 1.0, extra_height: float = 0.0, cap_kind: CapKind = CapKind.ORIG):
         self._y_factor = y_factor
         self._extra_height = extra_height  # necessary for new cap variant to avoid holes
+        self._cap_kind = cap_kind
         self._x_max_bottom = 8.75
         self._x_max_top = 7.0
         self._y_max_bottom = 8.25 * y_factor
@@ -150,9 +155,9 @@ class CapBodyCreator:
         z_min, z_max = self._z_min, self._z_max + self._extra_height
         z_centered = (z_min + z_max) / 2
 
-        face1 = Pos(Z=z_min) * create_arc_rect(width=width_bottom, height=deep_bottom, params=self._bottom_arc_rect_params)
+        face1 = Pos(Z=z_min) * self._create_arc_rect(width=width_bottom, height=deep_bottom, params=self._bottom_arc_rect_params)
         face2 = Pos(Z=z_centered) * self._create_center_arc_rect(z=z_centered)
-        face3 = Pos(Z=z_max) * create_arc_rect(width=width_top, height=deep_top, params=self._top_arc_rect_params)
+        face3 = Pos(Z=z_max) * self._create_arc_rect(width=width_top, height=deep_top, params=self._top_arc_rect_params)
         faces = Sketch() + [face1, face2, face3]
         return loft(faces)
     
@@ -164,7 +169,7 @@ class CapBodyCreator:
         bottom_arc_params = ArcRectParameters(radius_front_back=self._bottom_arc_rect_params.radius_front_back - thickness, 
                                               radius_left_right=self._bottom_arc_rect_params.radius_left_right - thickness, 
                                               radius_corner=self._bottom_arc_rect_params.radius_corner - thickness)
-        face1 = Pos(Z=self._z_min) * create_arc_rect(width=width_bottom, height=deep_bottom, params=bottom_arc_params)
+        face1 = Pos(Z=self._z_min) * self._create_arc_rect(width=width_bottom, height=deep_bottom, params=bottom_arc_params)
 
         z_rim_top = klp_lame_data.choc_stem.Z_MAX - 0.3
         face2 = Pos(Z=z_rim_top) * self._create_center_arc_rect(z=z_rim_top, offset=thickness)
@@ -201,12 +206,12 @@ class CapBodyCreator:
         deep_bottom, deep_top = 2 * self._y_max_bottom, 2 * self._y_max_top
         deep = back_side_helper.calc_value_at_z(z=z, value_bottom=deep_bottom, value_top=deep_top) - 2 * offset
         
-        return create_arc_rect(width=width, 
-                                height=deep, 
-                                params=ArcRectParameters(radius_front_back=ry, 
-                                                         radius_left_right=rx, 
-                                                         radius_corner=rc)
-                                )
+        return self._create_arc_rect(width=width, 
+                                     height=deep, 
+                                     params=ArcRectParameters(radius_front_back=ry, 
+                                                              radius_left_right=rx, 
+                                                              radius_corner=rc)
+                                    )
     
     def _calc_adapted_z_value(self, z_orig: float) -> float:
         z_min, z_max = self._z_min, self._z_max
@@ -221,6 +226,12 @@ class CapBodyCreator:
         s = (dz + z_extra) / dz  # stretch factor for side bezier curves
         
         return z_min + s * (z_orig - z_min)
+    
+    def _create_arc_rect(self, width: float, height: float, params: ArcRectParameters) -> Sketch:
+        if self._cap_kind == CapKind.INDEX_FINGER_NORMAL_SIZED:
+            return create_arc_rect_variant(width=width, height=height, params=params)
+        else:
+            return create_arc_rect(width=width, height=height, params=params)
 
 
 class CapSideHelper:
