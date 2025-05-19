@@ -54,6 +54,12 @@ class choc_stem:  # use small letter, cause this acts as a namespace
     TOP_FILLET_RADIUS = 0.25
 
 
+class grid:
+    CONN_CYLINDER_RADIUS = 0.8
+    CONN_CYLINDER_OVERLAP_WITH_CAP = 0.415
+    CAP_DISTANCE = 2.0
+
+
 class _ExtraBezierPoints:  # not used, only for completeness
     SKETCH10_SHAPE2 = [
         (8.25, 1.3),
