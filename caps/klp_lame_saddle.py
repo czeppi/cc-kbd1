@@ -3,7 +3,7 @@ import copy
 from enum import Enum
 
 from build123d import export_stl, loft, make_face, sweep, new_edges, fillet
-from build123d import Box, Part, Pos, Rot, Plane, Axis, Sketch, Polyline, Bezier, Curve, Rectangle
+from build123d import Box, Part, Pos, Rot, Plane, Axis, Sketch, Polyline, Bezier, Curve, Cylinder
 from ocp_vscode import show_object
 
 from base import OUTPUT_DPATH
@@ -18,10 +18,13 @@ class CapKind(Enum):
 
 
 def main():
-    #key_cap = create_orig_cap()
-    key_cap = create_index_normal_cap()
-    #key_cap = create_index_big_cap()
-    show_object(key_cap)
+    #part = create_orig_cap()
+    #part = create_index_normal_cap()
+    #part = create_index_big_cap()
+
+    part = create_combined_caps()
+
+    show_object(part)
 
 
 def create_orig_cap() -> None:
@@ -40,6 +43,25 @@ def create_index_big_cap() -> None:
     key_cap = LameSaddleKeyCapCreator(cap_kind=CapKind.INDEX_FINGER_BIG, extra_height=0.6).create()
     export_stl(key_cap, OUTPUT_DPATH / 'lame-key-cap-index-big.stl')
     return key_cap
+
+
+def create_combined_caps() -> None:
+    cap = LameSaddleKeyCapCreator(cap_kind=CapKind.ORIG, extra_height=0.6).create()
+    box = cap.bounding_box()
+
+    dist = 3.0
+
+    cap1 = Pos() * copy.copy(cap)
+    cap2 = Pos(X=box.max.X - box.min.X + dist) * copy.copy(cap)
+
+    conn_cyl_radius = 0.8
+    conn_cyl_height = dist + 2 * klp_lame_data.saddle.RIM_THICKNESS
+    conn_cyl_overlap = 0.5
+
+    conn_cyl = Cylinder(radius=conn_cyl_radius, height=conn_cyl_height)
+    conn12 = Pos(X=conn_cyl_height/2 + box.max.X - klp_lame_data.saddle.RIM_THICKNESS, 
+                 Z=-conn_cyl_radius + 1.3 + conn_cyl_overlap) * Rot(Y=90) * copy.copy(conn_cyl)
+    return Part() + [cap1, cap2, conn12]
 
 
 class LameSaddleKeyCapCreator:
