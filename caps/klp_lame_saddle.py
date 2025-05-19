@@ -7,14 +7,15 @@ from build123d import Box, Part, Pos, Rot, Plane, Axis, Sketch, Polyline, Bezier
 from ocp_vscode import show_object
 
 from base import OUTPUT_DPATH
-from arc_rect import create_arc_rect, create_arc_rect_variant, ArcRectParameters
+from arc_rect import create_arc_rect, create_concave_rect, ArcRectParameters
 import klp_lame_data
 
 
 class CapKind(Enum):
     ORIG = 1  # original key cap
-    INDEX_FINGER_NORMAL_SIZED = 2  # new caps for index finger (outside decreasing)
-    INDEX_FINGER_BIG = 3  # new outside caps for index finger (double deep, and rotated stem)
+    INDEX_FINGER_STD = 2  # new caps for index finger (outside decreasing)
+    INDEX_FINGER_CONCAVE = 3
+    INDEX_FINGER_BIG = 4  # new outside caps for index finger (double deep, and rotated stem)
 
 
 def main():
@@ -34,7 +35,7 @@ def create_orig_cap() -> None:
 
 
 def create_index_normal_cap() -> None:
-    key_cap = LameSaddleKeyCapCreator(cap_kind=CapKind.INDEX_FINGER_NORMAL_SIZED, extra_height=0.6).create()
+    key_cap = LameSaddleKeyCapCreator(cap_kind=CapKind.INDEX_FINGER_STD, extra_height=0.6).create()
     export_stl(key_cap, OUTPUT_DPATH / 'lame-key-cap-index-normal.stl')
     return key_cap
 
@@ -46,7 +47,11 @@ def create_index_big_cap() -> None:
 
 
 def create_combined_caps() -> None:
-    return LameKeyCapGridCreator(cap_kinds_per_column=[CapKind.ORIG, CapKind.INDEX_FINGER_BIG, CapKind.INDEX_FINGER_NORMAL_SIZED], num_columns=2).create()
+    return LameKeyCapGridCreator(cap_kinds_per_column=[CapKind.ORIG, 
+                                                       CapKind.INDEX_FINGER_BIG, 
+                                                       CapKind.INDEX_FINGER_STD,
+                                                       CapKind.INDEX_FINGER_CONCAVE], 
+                                 num_columns=2).create()
 
 
 
@@ -108,7 +113,7 @@ class LameKeyCapGridCreator:
         column_dist = self._column_width + dist
 
         conn_cyl_len = column_dist - cap_width + 2 * klp_lame_data.saddle.RIM_THICKNESS
-        if cap_kind == CapKind.INDEX_FINGER_NORMAL_SIZED:
+        if cap_kind == CapKind.INDEX_FINGER_CONCAVE:
             conn_cyl_len += 1.3  # cause of the concave form
 
         conn_cyl = self._create_row_cylinder(height=conn_cyl_len)
@@ -324,8 +329,8 @@ class CapBodyCreator:
         return z_min + s * (z_orig - z_min)
     
     def _create_arc_rect(self, width: float, height: float, params: ArcRectParameters) -> Sketch:
-        if self._cap_kind == CapKind.INDEX_FINGER_NORMAL_SIZED:
-            return create_arc_rect_variant(width=width, height=height, params=params)
+        if self._cap_kind == CapKind.INDEX_FINGER_CONCAVE:
+            return create_concave_rect(width=width, height=height, params=params)
         else:
             return create_arc_rect(width=width, height=height, params=params)
 

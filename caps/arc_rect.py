@@ -21,7 +21,7 @@ def create_arc_rect(width: float, height: float, params: ArcRectParameters) -> S
     return fillet(rect.vertices(), params.radius_corner)
 
 
-def create_arc_rect_variant(width: float, height: float, params: ArcRectParameters) -> Sketch:
+def create_concave_rect(width: float, height: float, params: ArcRectParameters) -> Sketch:
     """
         * * * 
       *       *
