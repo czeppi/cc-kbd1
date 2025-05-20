@@ -2,13 +2,16 @@ from typing import Iterator
 import copy
 from enum import Enum
 
-from build123d import export_stl, loft, make_face, sweep, new_edges, fillet
+from build123d import export_stl, loft, make_face, sweep, new_edges, fillet, mirror
 from build123d import Box, Part, Pos, Rot, Plane, Axis, Sketch, Polyline, Bezier, Curve, Cylinder, Solid, BoundBox
 from ocp_vscode import show_object
 
 from base import OUTPUT_DPATH
 from arc_rect import create_arc_rect, create_concave_rect, ArcRectParameters
 import klp_lame_data
+
+
+_EXTRA_HEIGT = 0.6
 
 
 class CapKind(Enum):
@@ -23,25 +26,26 @@ def main():
     #part = create_index_normal_cap()
     #part = create_index_big_cap()
 
-    part = create_combined_caps()
+    #part = create_combined_caps()
+    part = create_index_trio()
 
     show_object(part)
 
 
 def create_orig_cap() -> Solid:
-    key_cap = LameSaddleKeyCapCreator(cap_kind=CapKind.ORIG, extra_height=0.6).create()
+    key_cap = LameSaddleKeyCapCreator(cap_kind=CapKind.ORIG, extra_height=_EXTRA_HEIGT).create()
     export_stl(key_cap, OUTPUT_DPATH / 'lame-key-cap-orig.stl')
     return key_cap
 
 
 def create_index_normal_cap() -> Solid:
-    key_cap = LameSaddleKeyCapCreator(cap_kind=CapKind.INDEX_FINGER_STD, extra_height=0.6).create()
+    key_cap = LameSaddleKeyCapCreator(cap_kind=CapKind.INDEX_FINGER_STD, extra_height=_EXTRA_HEIGT).create()
     export_stl(key_cap, OUTPUT_DPATH / 'lame-key-cap-index-normal.stl')
     return key_cap
 
 
 def create_index_big_cap() -> Solid:
-    key_cap = LameSaddleKeyCapCreator(cap_kind=CapKind.INDEX_FINGER_BIG, extra_height=0.6).create()
+    key_cap = LameSaddleKeyCapCreator(cap_kind=CapKind.INDEX_FINGER_BIG, extra_height=_EXTRA_HEIGT).create()
     export_stl(key_cap, OUTPUT_DPATH / 'lame-key-cap-index-big.stl')
     return key_cap
 
@@ -61,6 +65,32 @@ def create_combined_caps() -> Solid:
     return caps
 
 
+def create_index_trio() -> Part:
+    concave_cap = LameSaddleKeyCapCreator(cap_kind=CapKind.INDEX_FINGER_CONCAVE, extra_height=_EXTRA_HEIGT).create()
+    big_cap = Rot(Z=180) * LameSaddleKeyCapCreator(cap_kind=CapKind.INDEX_FINGER_BIG, extra_height=_EXTRA_HEIGT).create()
+
+    concave_box = concave_cap.bounding_box()
+    big_box = big_cap.bounding_box()
+
+    pair_holder_back_border = 3.2  # s. keys_holder.BACK_BORDER
+    cut_width = 13.9  # s. keys_holder.CUT_WIDTH
+    cap_height = 4.8  # the height of the cap-bottom
+
+    x = -concave_box.min.X
+    y = cut_width/2 + pair_holder_back_border
+    z = cap_height - 1.3
+    cap1 = Rot(X=15) * Pos(X=x, Y=y, Z=z) * concave_cap
+    cap2 = mirror(cap1, about=Plane.XZ)
+ 
+    x = big_box.min.X
+    z = cap_height - 1.3 + 6
+    cap3 = Pos(X=x, Z=z) * Rot(Y=25) * big_cap
+
+    return cap1 + cap2 + cap3
+
+
+
+
 class LameKeyCapGridCreator:
 
     def __init__(self, cap_kinds: list[list[CapKind]]):
@@ -74,7 +104,7 @@ class LameKeyCapGridCreator:
         dist = grid_data.CAP_DISTANCE
 
         cap_kindes = set(cap_kind for cap_kind_column in self._cap_kinds for cap_kind in cap_kind_column)
-        self._cap_map = {cap_kind: LameSaddleKeyCapCreator(cap_kind=cap_kind, extra_height=0.6).create()
+        self._cap_map = {cap_kind: LameSaddleKeyCapCreator(cap_kind=cap_kind, extra_height=_EXTRA_HEIGT).create()
                          for cap_kind in cap_kindes}
         self._cap_box_map = {cap_kind: cap.bounding_box() 
                              for cap_kind, cap in self._cap_map.items()}
