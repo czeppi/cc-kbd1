@@ -11,9 +11,6 @@ from arc_rect import create_arc_rect, create_concave_rect, ArcRectParameters
 import klp_lame_data
 
 
-_EXTRA_HEIGT = 0.6
-
-
 class CapKind(Enum):
     ORIG = 1  # original key cap
     INDEX_FINGER_STD = 2  # new caps for index finger (outside decreasing)
@@ -22,52 +19,55 @@ class CapKind(Enum):
 
 
 def main():
-    #part = create_orig_cap()
-    #part = create_index_normal_cap()
-    #part = create_index_big_cap()
+    #part = create_single_cap(cap_kind=CapKind.ORIG, fname='lame-key-cap-orig.stl')
+    #part = create_single_cap(cap_kind=CapKind.INDEX_FINGER_STD, fname='lame-key-cap-index-normal.stl')
+    #part = create_single_cap(cap_kind=CapKind.INDEX_FINGER_CONCAVE, fname='lame-key-cap-index-concave.stl')
+    #part = create_single_cap(cap_kind=CapKind.INDEX_FINGER_BIG, fname='lame-key-cap-index-big.stl')
 
-    #part = create_combined_caps()
-    part = create_index_trio()
+    #part = create_index_trio()
+    #show_object(part)
+    create_grid_caps()
 
-    show_object(part)
-
-
-def create_orig_cap() -> Solid:
-    key_cap = LameSaddleKeyCapCreator(cap_kind=CapKind.ORIG, extra_height=_EXTRA_HEIGT).create()
-    export_stl(key_cap, OUTPUT_DPATH / 'lame-key-cap-orig.stl')
+    
+def create_single_cap(cap_kind: CapKind, fname: str) -> Solid:
+    print(f'create_single_cap: {cap_kind}...')
+    key_cap = LameSaddleKeyCapCreator(cap_kind=cap_kind).create()
+    export_stl(key_cap, OUTPUT_DPATH / fname)
     return key_cap
 
 
-def create_index_normal_cap() -> Solid:
-    key_cap = LameSaddleKeyCapCreator(cap_kind=CapKind.INDEX_FINGER_STD, extra_height=_EXTRA_HEIGT).create()
-    export_stl(key_cap, OUTPUT_DPATH / 'lame-key-cap-index-normal.stl')
-    return key_cap
+def create_grid_caps() -> None:
+    # _create_grid_caps(columns_data=['ob', 'bci'], fname='lame-key-caps-grid-test.stl')
+
+    order_data = [
+        ['bcc', 'bcc', 'bcc'],  # 1x
+        ['ooo', 'ooo', 'ooo'],  # 2x
+        ['iii', 'iii', 'iii'],  # 1x
+        ['bcc', 'oooo', 'oooo'],  # metal
+    ]
+
+    for i, columns_data in enumerate(order_data):
+        print(f'create grid {i}')
+        _create_grid_caps(columns_data=columns_data, fname=f'lame-key-caps-grid{i}.stl')
 
 
-def create_index_big_cap() -> Solid:
-    key_cap = LameSaddleKeyCapCreator(cap_kind=CapKind.INDEX_FINGER_BIG, extra_height=_EXTRA_HEIGT).create()
-    export_stl(key_cap, OUTPUT_DPATH / 'lame-key-cap-index-big.stl')
-    return key_cap
-
-
-def create_combined_caps() -> Solid:
+def _create_grid_caps(columns_data: list[str], fname: str):
     cap_kind_map = {
-        'o': CapKind.ORIG,
-        'i': CapKind.INDEX_FINGER_STD,
-        'c': CapKind.INDEX_FINGER_CONCAVE,
-        'b': CapKind.INDEX_FINGER_BIG,
+        'o': CapKind.ORIG,                  # needed: 16 + 2 reserve => 18
+        'i': CapKind.INDEX_FINGER_STD,      # needed:  8 + 1 reserve =>  9
+        'c': CapKind.INDEX_FINGER_CONCAVE,  # needed:  4 + 1 reserve =>  5
+        'b': CapKind.INDEX_FINGER_BIG,      # needed:  2 + 1 reserve =>  3
         }
-    columns_data = ['ob', 'bci']
     cap_kinds = [[cap_kind_map[ch] for ch in col_str] 
                  for col_str in columns_data]
     caps = LameKeyCapGridCreator(cap_kinds=cap_kinds).create()
-    export_stl(caps, OUTPUT_DPATH / 'lame-key-caps-grid2.stl')
+    export_stl(caps, OUTPUT_DPATH / fname)
     return caps
 
 
 def create_index_trio() -> Part:
-    concave_cap = LameSaddleKeyCapCreator(cap_kind=CapKind.INDEX_FINGER_CONCAVE, extra_height=_EXTRA_HEIGT).create()
-    big_cap = Rot(Z=180) * LameSaddleKeyCapCreator(cap_kind=CapKind.INDEX_FINGER_BIG, extra_height=_EXTRA_HEIGT).create()
+    concave_cap = LameSaddleKeyCapCreator(cap_kind=CapKind.INDEX_FINGER_CONCAVE).create()
+    big_cap = Rot(Z=180) * LameSaddleKeyCapCreator(cap_kind=CapKind.INDEX_FINGER_BIG).create()
 
     concave_box = concave_cap.bounding_box()
     big_box = big_cap.bounding_box()
@@ -89,8 +89,6 @@ def create_index_trio() -> Part:
     return cap1 + cap2 + cap3
 
 
-
-
 class LameKeyCapGridCreator:
 
     def __init__(self, cap_kinds: list[list[CapKind]]):
@@ -104,7 +102,7 @@ class LameKeyCapGridCreator:
         dist = grid_data.CAP_DISTANCE
 
         cap_kindes = set(cap_kind for cap_kind_column in self._cap_kinds for cap_kind in cap_kind_column)
-        self._cap_map = {cap_kind: LameSaddleKeyCapCreator(cap_kind=cap_kind, extra_height=_EXTRA_HEIGT).create()
+        self._cap_map = {cap_kind: LameSaddleKeyCapCreator(cap_kind=cap_kind).create()
                          for cap_kind in cap_kindes}
         self._cap_box_map = {cap_kind: cap.bounding_box() 
                              for cap_kind, cap in self._cap_map.items()}
@@ -160,7 +158,6 @@ class LameKeyCapGridCreator:
 
             prev_num_rows = i
     
-    
     def _create_row_cylinder(self) -> Solid:
         grid_data = klp_lame_data.grid
         conn_cyl_radius = grid_data.CONN_CYLINDER_RADIUS
@@ -194,9 +191,18 @@ class LameSaddleKeyCapCreator:
     CAP_RIM_HEIGHT = 0
     CAP_RIM_FILLET = 0.25  # inside + outside
 
-    def __init__(self, cap_kind: CapKind = CapKind.ORIG, extra_height: float = 0.0):
+    def __init__(self, cap_kind: CapKind = CapKind.ORIG):
         self._cap_kind = cap_kind
-        self._extra_height = extra_height  # to avoid holes in index finger caps (there will be holes with extra_height <= 0.2)
+
+        if cap_kind == CapKind.INDEX_FINGER_BIG:
+            self._extra_height = 0.6  # 0.2 => small hole, 0.3 => no hole
+        elif cap_kind == CapKind.INDEX_FINGER_STD:
+            self._extra_height = 0.5  # 0.1 => small hole, 0.2 => no hole
+        elif cap_kind == CapKind.INDEX_FINGER_CONCAVE:
+            self._extra_height = 1.0  # 0.6 => small hole, 0.7 => no hole
+        else:
+            self._extra_height = 0.0
+
         self._y_factor = 2.0 if self._cap_kind == CapKind.INDEX_FINGER_BIG else 1.0
 
     def create(self) -> Part:
@@ -207,11 +213,13 @@ class LameSaddleKeyCapCreator:
         cap_body_without_rim = body_creator.create_body()
         neg_rim = body_creator.create_neg_rim()
         cap_body_with_rim = cap_body_without_rim - neg_rim
+        
         edges = new_edges(cap_body_without_rim, combined=cap_body_with_rim)
         cap = fillet(edges, radius=0.2)  # at a fillet at the inside of the rim, cause the thickness is very thin at back/left with cap_kind=INDEX_FINGER_NORMAL_SIZED
   
         sweep_part = self._create_sweep_part()
         sweeped_cap_body = cap - sweep_part #- Pos(X=-10, Y=-10) * Box(20, 20, 20)
+        #return sweeped_cap_body - Pos(X=-10, Y=-5) * Box(20, 20, 20)
 
         edges = new_edges(cap, sweep_part, combined=sweeped_cap_body)
         cap = fillet(edges, klp_lame_data.saddle.SWEEP_FILLET_RADIUS)
@@ -224,7 +232,7 @@ class LameSaddleKeyCapCreator:
         edges = new_edges(cap_without_stems, stems, combined=cap_with_stems)
 
         cap = fillet(edges, radius=klp_lame_data.choc_stem.TOP_FILLET_RADIUS)
-        # cap -= Pos(X=-10, Y=-5) * Box(20, 20, 20)
+        #cap -= Pos(X=-10, Y=-5) * Box(20, 20, 20)
         return cap
 
     def _create_sweep_part(self) -> Part:
@@ -253,7 +261,7 @@ class LameSaddleKeyCapCreator:
 
         x_len = stem_data.X_MAX - stem_data.X_MIN
         y_len = stem_data.Y_MAX - stem_data.Y_MIN
-        z_len = stem_data.Z_MAX - stem_data.Z_MIN
+        z_len = stem_data.Z_MAX - stem_data.Z_MIN + 0.1  # 0.1 is necessary for top fillets at stem
         
         stem_box = Pos(Z=z_len / 2 + stem_data.Z_MIN) * Box(x_len, y_len, z_len)
         edges = stem_box.edges().group_by(Axis.Z)[:2]
@@ -307,7 +315,7 @@ class CapBodyCreator:
                                               radius_corner=self._bottom_arc_rect_params.radius_corner - thickness)
         face1 = Pos(Z=self._z_min) * self._create_arc_rect(width=width_bottom, height=deep_bottom, params=bottom_arc_params)
 
-        z_rim_top = klp_lame_data.choc_stem.Z_MAX - 0.3
+        z_rim_top = klp_lame_data.choc_stem.Z_MAX
         face2 = Pos(Z=z_rim_top) * self._create_center_arc_rect(z=z_rim_top, offset=thickness)
 
         faces = Sketch() + [face1, face2]
