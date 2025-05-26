@@ -23,32 +23,32 @@ from base import OUTPUT_DPATH
 class kailh_choc_v1_data:
     """ data of github.com/keyboardio/keyswitch_documentation/blob/master/datasheets/Kailh/PG135001D02-Brown-Choc.pdf
     """
-    sub_body_size = 13.8  # the size of the squared part, which is penetrated in the case
-    sub_body_height = 2.1  # (5.0 - 0.8) / 2
-    stubs_height = 2.65  # height of the 3 stubs, which stabilized the switch
-    center_stub_radius = 1.7
-    outer_stub_radius = 0.95  # radius of the 2 outer stubs, which stabilized the switch
-    outer_stub_cx = 5.5  # center of the 2 outer stubs
-    pin1_hole_cy = 3.8
-    pin2_hole_cy = 5.9  # center of the pin hole, which is on the y-axis
+    SUB_BODY_SIZE = 13.8  # the size of the squared part, which is penetrated in the case
+    SUB_BODY_HEIGHT = 2.1  # (5.0 - 0.8) / 2
+    STUBS_HEIGHT = 2.65  # height of the 3 stubs, which stabilized the switch
+    CENTER_STUB_RADIUS = 1.7
+    OUTER_STUB_RADIUS = 0.95  # radius of the 2 outer stubs, which stabilized the switch
+    OUTER_STUB_CX = 5.5  # center of the 2 outer stubs
+    PIN1_HOLE_CY = 3.8
+    PIN2_HOLE_CY = 5.9  # center of the pin hole, which is on the y-axis
 
 
 class hot_swap_socket_data:
     """ data of https://www.kailhswitch.com/mechanical-keyboard-switches/box-switches/choc-type-hot-swap-socket.html
     """
-    body_height = 1.8
-    body_x_len = 9.55  # x-axis
-    body_y_len = 6.85
-    side_y_len = 4.65  # the y extension on the left + right side
-    chamfer_xy = 0.8  # the dx (== dy) value of the chamfers
-    fillet_radius = 0.8
-    studs_radius = 1.5
-    studs_height = 1.25
-    studs_dx = 5.0  # x-distance of the 2 studs
-    studs_dy = 2.2
-    terminals_width = 2.68  # y-extension of the left + right terminal
-    y_offset = -4.75 # 5.85 - studs_dy/2, use 5.85 (not kailh_choc_v1_data.pin_hole_cy), cause pins_dy != studs.dy
-    x_offset = -2.5  # studs_dx / 2
+    BODY_HEIGHT = 1.8
+    BODY_X_LEN = 9.55  # x-axis
+    BODY_Y_LEN = 6.85
+    SIDE_Y_LEN = 4.65  # the y extension on the left + right side
+    CHAMFER_XY = 0.8  # the dx (== dy) value of the chamfers
+    FILLET_RADIUS = 0.8
+    STUDS_RADIUS = 1.5
+    STUDS_HEIGHT = 1.25
+    STUDS_DX = 5.0  # x-distance of the 2 studs
+    STUDS_DY = 2.2
+    TERMINALS_WIDTH = 1.68  # y-extension of the left + right terminal
+    Y_OFFSET = -4.75 # 5.85 - studs_dy/2, use 5.85 (not kailh_choc_v1_data.pin_hole_cy), cause pins_dy != studs.dy
+    X_OFFSET = -2.5  # studs_dx / 2
 
 
 class hot_swap_socket_data_old:
@@ -87,17 +87,16 @@ class hot_swap_socket_data_old:
 
 def main():
     socket = KeySocketCreator().create()
-    # export_stl(hot_swap_socket, OUTPUT_DPATH / 'hot-swap-socket.stl')
+    export_stl(socket, OUTPUT_DPATH / 'hot-swap-socket.stl')
     show_object(socket)
 
 
 class KeySocketCreator:
 
     def __init__(self):
-        self._height = 3.0
-        self._holder_left_right_border = 3.0  # s. keys_holder.py#LEFT_RIGHT_BORDER
-        self._holder_front_border = 3.0  # s. keys_holder.py#FRONT_BORDER
-        self._holder_back_border = 3.2  # s. keys_holder.py#BACK_BORDER
+        self._holder_left_right_border = 1.0
+        self._holder_front_border = 3.2  # s. keys_holder.py#BACK_BORDER
+        self._holder_back_border = 1.0
         self._tolerance = 0.1
 
     def create(self) -> Solid:
@@ -105,7 +104,7 @@ class KeySocketCreator:
         square_hole_bounding_box = square_hole_box.bounding_box()
         square_hole_height = square_hole_bounding_box.max.Z - square_hole_bounding_box.min.Z
 
-        hot_swap_socket = Pos(X=hot_swap_socket_data.x_offset, Y=hot_swap_socket_data.y_offset) * HotSwapSocketCreator3().create()
+        hot_swap_socket = Pos(X=hot_swap_socket_data.X_OFFSET, Y=hot_swap_socket_data.Y_OFFSET) * HotSwapSocketCreator3().create()
         hot_swap_socket_box = hot_swap_socket.bounding_box()
 
         body_z_max = square_hole_height
@@ -119,12 +118,12 @@ class KeySocketCreator:
         return result
 
     def _create_switch_square_hole_box(self) -> Solid:
-        square_hole_len = kailh_choc_v1_data.sub_body_size + 2 * self._tolerance
-        height = kailh_choc_v1_data.sub_body_height - self._tolerance
+        square_hole_len = kailh_choc_v1_data.SUB_BODY_SIZE + 2 * self._tolerance
+        height = kailh_choc_v1_data.SUB_BODY_HEIGHT - self._tolerance
         return Pos(Z=height/2) * Box(square_hole_len, square_hole_len, height)
     
     def _create_body(self, z_min: float, z_max: float) -> Solid:
-        square_hole_len = kailh_choc_v1_data.sub_body_size + 2 * self._tolerance
+        square_hole_len = kailh_choc_v1_data.SUB_BODY_SIZE + 2 * self._tolerance
         x_len = square_hole_len + 2 * self._holder_left_right_border
         y_len = square_hole_len + self._holder_back_border + self._holder_front_border
         height = z_max - z_min
@@ -133,16 +132,12 @@ class KeySocketCreator:
         return Pos(Y=y_offset, Z=z_offset) * Box(x_len, y_len, height)
     
     def _iter_holes(self) -> Iterator[Solid]:
-        #yield Cylinder(radius=3.429/2, height=self._height)
-        #yield Pos(X=-5.5) * Cylinder(radius=1.7018/2, height=self._height)
-        #yield Pos(X=5.5) * Cylinder(radius=1.7018/2, height=self._height)
-
         data = kailh_choc_v1_data
         tol = self._tolerance
-        height = data.stubs_height
-        yield Pos(Z=-height/2) * Cylinder(radius=data.center_stub_radius + tol, height=height)
-        yield Pos(Z=-height/2, X=-data.outer_stub_cx) * Cylinder(radius=data.outer_stub_radius + tol, height=height)
-        yield Pos(Z=-height/2, X=data.outer_stub_cx) * Cylinder(radius=data.outer_stub_radius + tol, height=height)
+        height = data.STUBS_HEIGHT + tol
+        yield Pos(Z=-height/2) * Cylinder(radius=data.CENTER_STUB_RADIUS + tol, height=height)
+        yield Pos(Z=-height/2, X=-data.OUTER_STUB_CX) * Cylinder(radius=data.OUTER_STUB_RADIUS + tol, height=height)
+        yield Pos(Z=-height/2, X=data.OUTER_STUB_CX) * Cylinder(radius=data.OUTER_STUB_RADIUS + tol, height=height)
 
 
 @dataclass
@@ -328,6 +323,7 @@ class HotSwapSocketCreator3:
     """
     def __init__(self):
         self._left_right_terminal_len = 10.0
+        self._tolerance = 0.1
 
     def create(self) -> Solid:
         body = self._create_body()
@@ -335,15 +331,16 @@ class HotSwapSocketCreator3:
         studs = list(self._iter_studs())
         part = Part() + ([body] + studs)
         part = mirror(part, Plane.XZ)
-        part = offset(part, amount=0.1, kind=Kind.INTERSECTION)
+        part = offset(part, amount=self._tolerance, kind=Kind.INTERSECTION)
         return part
 
     def _iter_studs(self) -> Iterator[Solid]:
         data = hot_swap_socket_data
-        h = data.studs_height
-        cyl = Pos(Z=-h/2) * Cylinder(radius=1.5, height=h)
-        dx = data.studs_dx / 2
-        dy = data.studs_dy / 2
+        h = data.STUDS_HEIGHT
+        r = data.STUDS_RADIUS
+        cyl = Pos(Z=-h/2) * Cylinder(radius=r, height=h)
+        dx = data.STUDS_DX / 2
+        dy = data.STUDS_DY / 2
         yield Pos(X=-dx, Y=-dy) * copy.copy(cyl)
         yield Pos(X=dx, Y=dy) * copy.copy(cyl)
 
@@ -353,8 +350,8 @@ class HotSwapSocketCreator3:
 
         face = make_face(lines)
         data = hot_swap_socket_data
-        height = data.body_height
-        return Pos(X=-cx, Y=-cy, Z=-height - data.studs_height) * extrude(face, height)
+        height = data.BODY_HEIGHT
+        return Pos(X=-cx, Y=-cy, Z=-height - data.STUDS_HEIGHT) * extrude(face, height)
 
     def _calc_center(self) -> tuple[float, float]:
         items = list(self._iter_path_items())
@@ -386,12 +383,12 @@ class HotSwapSocketCreator3:
             y0 += item.dy
 
     def _iter_path_items(self) -> Iterator[PathItem]:
-        chamfer_xy = 0.8
-        fillet_radius = 0.8
+        chamfer_xy = hot_swap_socket_data.CHAMFER_XY
+        fillet_radius = hot_swap_socket_data.FILLET_RADIUS
         term_len = self._left_right_terminal_len
-        term_width = 1.68
+        term_width = hot_swap_socket_data.TERMINALS_WIDTH
         x_infl, y_infl = self._calc_inflection_point()
-        side_height = 4.65
+        side_height = hot_swap_socket_data.SIDE_Y_LEN
 
         a = (side_height - 2 * chamfer_xy - term_width) / 2  # length of rim next to terminal
 
