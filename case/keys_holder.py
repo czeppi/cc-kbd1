@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from typing import Iterator
 from pathlib import Path
 
-from build123d import mirror, make_face, extrude, loft, export_stl
-from build123d import Polyline, Plane, Part, Pos, Rot, Box, Location, Compound, Rectangle, Sketch, BaseSketchObject, Cylinder
+from build123d import mirror, make_face, extrude, loft, export_stl, sweep
+from build123d import Polyline, Plane, Part, Pos, Rot, Box, Location, Compound, Rectangle, Sketch, BaseSketchObject, Cylinder, Edge, Vector
 from ocp_vscode import show_object
 
 
@@ -37,6 +37,9 @@ OUTPUT_DPATH = Path('output')
 
 
 def main():
+    SkeletonSplineFinder().find_path()
+    return
+
     creator = FinalAssemblyCreator()
     assembly = creator.create_with_slots()
 
@@ -455,6 +458,64 @@ class KeyPairHolderSwinger:
     @property
     def back_centered_to_normal(self) -> Location:
         return Rot(X=TILT_ANGLE) * Pos(Y=self._dy)
+    
+
+class SkeletonSplineFinder:
+
+    def __init__(self):
+        pass
+
+    def find_path(self):
+        loc = KeyPairHolderFingerLocations()
+        points = [Vector(-8, -5, 0), loc.middle.position, loc.ring.position, loc.pinkie.position]
+        spline_edge = Edge.make_spline_approx(points=points, tol=0.01, max_deg=3)
+        show_object(spline_edge, name='spline')
+
+        box = Box(16, 36, 5)
+        index_box = loc.index * copy.copy(box)
+        show_object(index_box, name='index')
+
+        middle_box = loc.middle * copy.copy(box)
+        show_object(middle_box, name='middle')
+
+        ring_box = loc.ring * copy.copy(box)
+        show_object(ring_box, name='ring')
+
+        pinkie_box = loc.pinkie * copy.copy(box)
+        show_object(pinkie_box, name='pinkie')
+
+        start_tangent = spline_edge%0
+        x_dir = start_tangent.cross(Vector(0, 0, 1)).normalized()
+        plane0 = Plane(origin=Vector(-8, -5, 0), z_dir=start_tangent, x_dir=x_dir)
+        profile0 = plane0 * Rectangle(16, 8)
+
+        end_tangent = spline_edge%1
+        x_dir = end_tangent.cross(Vector(0, 0, 1)).normalized()
+        plane1 = Plane(origin=points[-1], z_dir=end_tangent, x_dir=x_dir)
+        profile1 = plane1 * Rectangle(16, 8)
+
+        sweeped_part = sweep([profile0, profile1], path=spline_edge, multisection=True)
+        show_object(sweeped_part, name='sweeped')
+        return spline_edge
+    
+    def _find_t_in_spline(self, x0: float, spline: Edge) -> float:
+        eps = 1e-3
+        t1 = 0.0
+        t2 = 1.0
+
+        for i in range(100):
+            t = (t1 + t2) / 2
+            p = spline@t
+            if abs(p.X - x0) < eps:
+                return t
+            if p.X < x0:
+                t2 = t
+            else:
+                t1 = t
+        else: 
+            raise Exception('t not found in spline')
+
+
 
 
 if __name__ == '__main__':
