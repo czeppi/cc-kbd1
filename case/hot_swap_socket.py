@@ -5,7 +5,7 @@ import math
 from dataclasses import dataclass
 
 from build123d import export_stl, make_face, extrude, offset, mirror
-from build123d import Part, Pos, Rot, Curve, Cylinder, Solid, Line, EllipticalCenterArc, AngularDirection, Edge, RadiusArc, Kind, Box, Plane
+from build123d import Part, Pos, Rot, Curve, Cylinder, Solid, Line, EllipticalCenterArc, AngularDirection, Edge, RadiusArc, Kind, Box, Plane, Sketch, Polyline
 from ocp_vscode import show_object
 
 from base import OUTPUT_DPATH
@@ -86,12 +86,187 @@ class hot_swap_socket_data_old:
 
 
 def main():
-    socket = KeySocketCreator().create()
+    create_switch_pair_holder()
+
+
+def create_switch_pair_holder():
+    holder = SwitchPairHolderCreator().create()
+    show_object(holder)
+
+
+def create_switch_socket():
+    socket = SwitchSocketCreator().create()
     export_stl(socket, OUTPUT_DPATH / 'hot-swap-socket.stl')
     show_object(socket)
 
 
-class KeySocketCreator:
+class SwitchPairHolderCreator:
+
+    def __init__(self):
+        self._angle = 15  # 15° for each side
+        self._holder_left_right_border = 1.0
+        self._holder_front_border = 3.2  # s. keys_holder.py#BACK_BORDER
+        self._holder_back_border = 1.0
+        self._tolerance = 0.1
+
+    @property
+    def _square_hole_len(self) -> float:
+        return kailh_choc_v1_data.SUB_BODY_SIZE + 2 * self._tolerance
+    
+    @property
+    def _square_hole_height(self) -> float:
+        return kailh_choc_v1_data.SUB_BODY_HEIGHT - self._tolerance
+    
+    def create(self) -> list[Solid]:
+        return [self.create_top(), self.create_middle_part()]
+
+    def create_top(self) -> Solid:
+        back_part = self._create_top_back_part()
+        back_box = back_part.bounding_box()
+
+        back_part = Rot(X=self._angle) * Pos(Y=-back_box.min.Y) * back_part
+        front_part = Rot(Z=180) * copy.copy(back_part)
+        top_part = back_part + front_part
+        top_part.label = 'top'
+        return top_part
+        
+    def _create_top_back_part(self) -> Solid:
+        body = self._create_top_body()
+
+        a = self._square_hole_len
+        h = self._square_hole_height
+        square_hole = Pos(Z=h/2 + hot_swap_socket_data.STUDS_HEIGHT) * Box(a, a, h)
+
+        holes = list(self._iter_holes())
+        hot_swap_socket_studs = list(self._iter_hot_swap_socket_studs())
+
+        neg_parts = [square_hole] + holes + hot_swap_socket_studs
+        return body - neg_parts
+
+    def _create_top_body(self) -> Solid:
+        face = self._create_top_profile_face()
+        width = 2 * self._holder_left_right_border + self._square_hole_len
+        
+        return Pos(X=-width/2) * extrude(face, width)
+
+    def _create_top_profile_face(self) -> Sketch:
+        """
+        order of points:
+               z
+           2   |    1
+          3    +----0-----> y
+        """
+        angle_rad = math.radians(self._angle)
+
+        square_hole_len = self._square_hole_len
+        square_hole_height = self._square_hole_height
+
+        y01 = square_hole_len/2 + self._holder_back_border 
+        y2 = -square_hole_len/2 - self._holder_front_border
+        z12 = square_hole_height + hot_swap_socket_data.STUDS_HEIGHT
+        y3 = y2 - z12 * math.tan(angle_rad)
+
+        points = [
+            (y01, 0),
+            (y01, z12),
+            (y2, z12),
+            (y3, 0),
+            (y01, 0),
+        ]
+        back_half = Polyline(points)
+        return make_face(Plane.YZ * back_half)
+    
+    def _iter_hot_swap_socket_studs(self) -> Iterator[Solid]:
+        data = hot_swap_socket_data
+        h = data.STUDS_HEIGHT
+        r = data.STUDS_RADIUS
+        cyl = Pos(Z=h/2) * Cylinder(radius=r, height=h)
+        dx = data.STUDS_DX / 2
+        dy = data.STUDS_DY / 2
+
+        y0 = hot_swap_socket_data.Y_OFFSET
+        x0 = hot_swap_socket_data.X_OFFSET
+
+        yield Pos(X=x0 - dx, Y=y0 + dy) * copy.copy(cyl)
+        yield Pos(X=x0 + dx, Y=y0 - dy) * copy.copy(cyl)    
+    
+    def create_middle_part(self) -> Solid:
+        back_part = self._create_middle_back_part()
+        front_part = Rot(Z=180) * copy.copy(back_part)
+        middle_part = back_part + front_part
+        middle_part.label = 'middle'
+        return middle_part
+
+    def _create_middle_back_part(self) -> Solid:
+        body = self._create_middle_body()
+        body_box = body.bounding_box()
+
+        angle_rad = math.radians(self._angle)
+        top_height = self._square_hole_height + hot_swap_socket_data.STUDS_HEIGHT
+        y_off0 = self._square_hole_len/2 + self._holder_front_border + top_height * math.tan(angle_rad)
+
+        x_off = hot_swap_socket_data.X_OFFSET
+        y_off = hot_swap_socket_data.Y_OFFSET + y_off0
+        z_off = hot_swap_socket_data.STUDS_HEIGHT
+        hot_swap_socket = Rot(X=self._angle) * Pos(X=x_off, Y=y_off, Z=z_off) * HotSwapSocketCreator3().create()
+        #hot_swap_socket_box = hot_swap_socket.bounding_box()
+
+        holes = [Rot(X=self._angle) * Pos(Y=y_off0) * hole 
+                 for hole in self._iter_holes()]
+        
+        bottom_hole_height = 1.0
+        z_off = bottom_hole_height/2 + body_box.min.Z
+        bottom_hole = Pos(Y=5, Z=z_off) * Cylinder(radius=1.5, height=bottom_hole_height)
+
+        neg_parts = [hot_swap_socket, bottom_hole] + holes
+        return body - neg_parts
+
+    def _create_middle_body(self) -> Solid:
+        face = self._create_middle_profile_face()
+        width = 2 * self._holder_left_right_border + self._square_hole_len
+        
+        return Pos(X=width/2) * extrude(face, width)
+    
+    def _create_middle_profile_face(self) -> Sketch:
+        """
+        order of points:
+               z
+               |     1
+               0---------> y
+               3   2
+        """
+        angle_rad = math.radians(self._angle)
+
+        r = self._holder_front_border + self._square_hole_len/2 + kailh_choc_v1_data.CENTER_STUB_RADIUS + 4.0
+        y1 = r * math.cos(angle_rad)
+        z1 = r * math.sin(angle_rad)
+        y2 = y1 - 4.0
+        z23 = -3.0
+
+        points = [
+            (0, 0),
+            (y1, z1),
+            (y2, z23),
+            (0, z23),
+            (0, 0),
+        ]
+        back_half = Polyline(points)
+        return make_face(Plane.YZ * back_half)
+
+    def create_foot(self) -> Solid:
+        pass
+
+    def _iter_holes(self) -> Iterator[Solid]:
+        data = kailh_choc_v1_data
+        tol = self._tolerance
+        height = data.STUBS_HEIGHT + tol
+        z_off = hot_swap_socket_data.STUDS_HEIGHT - height/2
+        yield Pos(Z=z_off) * Cylinder(radius=data.CENTER_STUB_RADIUS + tol, height=height)
+        yield Pos(Z=z_off, X=-data.OUTER_STUB_CX) * Cylinder(radius=data.OUTER_STUB_RADIUS + tol, height=height)
+        yield Pos(Z=z_off, X=data.OUTER_STUB_CX) * Cylinder(radius=data.OUTER_STUB_RADIUS + tol, height=height)
+
+
+class SwitchSocketCreator:
 
     def __init__(self):
         self._holder_left_right_border = 1.0
@@ -116,7 +291,7 @@ class KeySocketCreator:
         result = body - neg_parts
 
         return result
-
+    
     def _create_switch_square_hole_box(self) -> Solid:
         square_hole_len = kailh_choc_v1_data.SUB_BODY_SIZE + 2 * self._tolerance
         height = kailh_choc_v1_data.SUB_BODY_HEIGHT - self._tolerance
