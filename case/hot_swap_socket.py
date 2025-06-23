@@ -259,8 +259,9 @@ class SwitchPairHolderCreator:
         holes = [Rot(X=self.TILT_ANGLE) * Pos(Y=y_off0) * hole 
                  for hole in self._iter_switch_holes()]
         
-        z_off = self.CABLE_DIAMETER/2 + body_box.min.Z
-        cabel_slot = Pos(Y=self.CABLE_SLOT_Y, Z=z_off) * Box(1000, self.CABLE_DIAMETER, self.CABLE_DIAMETER)
+        cable_diam = self.CABLE_DIAMETER + self.TOLERANCE
+        z_off = cable_diam/2 + body_box.min.Z
+        cabel_slot = Pos(Y=self.CABLE_SLOT_Y, Z=z_off) * Box(1000, cable_diam, cable_diam)
 
         neg_parts = [hot_swap_socket, cabel_slot] + holes
         return body - neg_parts
