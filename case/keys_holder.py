@@ -5,7 +5,7 @@ from typing import Iterator
 from pathlib import Path
 
 from build123d import mirror, make_face, extrude, loft, export_stl, sweep
-from build123d import Polyline, Plane, Part, Pos, Rot, Box, Location, Compound, Rectangle, Sketch, BaseSketchObject, Cylinder, Edge, Vector
+from build123d import Polyline, Plane, Part, Pos, Rot, Box, Location, Compound, Rectangle, Circle, Sketch, BaseSketchObject, Cylinder, Edge, Vector, Face
 from ocp_vscode import show_object
 
 
@@ -115,15 +115,16 @@ class SkeletonCreator:
         loft2 = loft(Sketch() + list([u3, u4, u5]))
         loft3 = loft(Sketch() + list([u5, u6]))
 
+        # bottom wholes
         cylinder = Cylinder(radius=2.5, height=50)
-
         cylinder1 = loc.index2 * copy.copy(cylinder)
         cylinder2 = loc2 * copy.copy(cylinder)
         cylinder3 = loc3 * copy.copy(cylinder)
 
         neg_foot_box = loc7 * Pos(X=15, Z=-10) * Box(30, 30, 30)
+        dummy_box = loc7 * Pos(X=1, Z=0) * Box(2, 20, 20)
 
-        skeleton = loft1 + loft2 + loft3 - cylinder1 - cylinder2 - cylinder3 - neg_foot_box
+        skeleton = loft1 + loft2 + loft3 - cylinder1 - cylinder2 - cylinder3 - neg_foot_box + dummy_box
         skeleton.label = 'skeleton'
         return skeleton
 
@@ -313,23 +314,23 @@ class KeyPairHolderCreator:
 
     def _cut(self, holder: Part) -> Part:
         thickness = self._thickness
-        loc = KeyPairHolderSwinger()
+        swinger = KeyPairHolderSwinger()
         cut_box = Pos(Z=-thickness/2) * Box(CUT_WIDTH, CUT_WIDTH, 1.1 * thickness)
         
 
-        holder = loc.normal_to_front_centered * holder  # move front cut in origin
+        holder = swinger.normal_to_front_centered * holder  # move front cut in origin
         holder -= cut_box
         if self._with_hot_swap_slots:
             front_hot_swap_box = self._create_hot_swap_slot_box(front=True)
             holder -= front_hot_swap_box
-        holder = loc.front_centered_to_normal * holder  # move back
+        holder = swinger.front_centered_to_normal * holder  # move back
 
-        holder = loc.normal_to_back_centered * holder  # move back cut in origin
+        holder = swinger.normal_to_back_centered * holder  # move back cut in origin
         holder -= cut_box
         if self._with_hot_swap_slots:
             back_hot_swap_box = self._create_hot_swap_slot_box(front=False)
             holder -= back_hot_swap_box
-        holder = loc.back_centered_to_normal * holder  # move back
+        holder = swinger.back_centered_to_normal * holder  # move back
 
         return holder
     
@@ -437,7 +438,7 @@ class KeyPairHolderSwinger:
         the normal position is, when the crease edge is on the x axis
         and the middle of the crease edge coincident the origin
 
-        the front/bach centered position is, when the center of the cut from the front/back key holder coincident the origin.
+        the front/bach centered position is, when the center of the cut from the front/back key holder coincidents the origin.
     """
 
     def __init__(self):
@@ -463,15 +464,62 @@ class KeyPairHolderSwinger:
 class SkeletonSplineFinder:
 
     def __init__(self):
-        pass
+        self._dz = -12
 
     def find_path(self):
-        loc = KeyPairHolderFingerLocations()
-        points = [Vector(-8, -5, 0), loc.middle.position, loc.ring.position, loc.pinkie.position]
-        spline_edge = Edge.make_spline_approx(points=points, tol=0.01, max_deg=3)
-        show_object(spline_edge, name='spline')
+        spline_edge = self._create_spline_edge()
+        #show_object(spline_edge, name='spline')
 
-        box = Box(16, 36, 5)
+        outer_tube = self._create_tube(r=8, spline_edge=spline_edge)
+        inner_tube = self._create_tube(r=5, spline_edge=spline_edge)
+        sweeped_part = outer_tube - inner_tube
+        show_object(sweeped_part, name='sweeped')
+
+        self._show_switch_holder()
+  
+
+        #profile_template = Rectangle(16, 8) - Circle(3)
+        #profile_template = Circle(8) + Rectangle(4,12)
+
+        return spline_edge
+    
+    def _create_spline_edge(self) -> Edge:
+        loc = KeyPairHolderFingerLocations()
+        dz = self._dz
+        holder_dx = LEFT_RIGHT_BORDER + CUT_WIDTH + LEFT_RIGHT_BORDER
+        skeleton_end = loc.pinkie * Pos(X=holder_dx/2+19, Y=-12) * Rot(Y=15)
+
+        points = [Vector(-26, -5, dz), 
+                  (loc.middle * Pos(Z=dz)).position, 
+                  (loc.ring * Pos(Z=dz)).position, 
+                  (loc.pinkie * Pos(Z=dz)).position,
+                  (skeleton_end * Pos(Z=dz)).position]
+        
+        return Edge.make_spline_approx(points=points, tol=0.01, max_deg=3)
+
+    def _create_tube(self, r: float, spline_edge: Edge) -> Part:
+        profile_template = Circle(r)
+
+        start_tangent = spline_edge%0
+        x_dir = start_tangent.cross(Vector(0, 0, 1)).normalized()
+        plane0 = Plane(origin=spline_edge@0, z_dir=start_tangent, x_dir=x_dir)
+        profile0 = plane0 * profile_template
+
+        end_tangent = spline_edge%1
+        x_dir = end_tangent.cross(Vector(0, 0, 1)).normalized()
+        plane1 = Plane(origin=spline_edge@1, z_dir=end_tangent, x_dir=x_dir)
+        profile1 = plane1 * profile_template
+
+        return sweep([profile0, profile1], path=spline_edge, multisection=True)
+    
+    def _show_switch_holder(self):
+        loc = KeyPairHolderFingerLocations()
+        y2 = 11.36  # SwitchPairHolderCreator._create_middle_profile_face()#y2
+        box = Box(14, 2 * y2, 5)
+
+        index2_box = loc.index * Pos(X=-14) * copy.copy(box)
+        show_object(index2_box, name='index2')
+
         index_box = loc.index * copy.copy(box)
         show_object(index_box, name='index')
 
@@ -483,20 +531,6 @@ class SkeletonSplineFinder:
 
         pinkie_box = loc.pinkie * copy.copy(box)
         show_object(pinkie_box, name='pinkie')
-
-        start_tangent = spline_edge%0
-        x_dir = start_tangent.cross(Vector(0, 0, 1)).normalized()
-        plane0 = Plane(origin=Vector(-8, -5, 0), z_dir=start_tangent, x_dir=x_dir)
-        profile0 = plane0 * Rectangle(16, 8)
-
-        end_tangent = spline_edge%1
-        x_dir = end_tangent.cross(Vector(0, 0, 1)).normalized()
-        plane1 = Plane(origin=points[-1], z_dir=end_tangent, x_dir=x_dir)
-        profile1 = plane1 * Rectangle(16, 8)
-
-        sweeped_part = sweep([profile0, profile1], path=spline_edge, multisection=True)
-        show_object(sweeped_part, name='sweeped')
-        return spline_edge
     
     def _find_t_in_spline(self, x0: float, spline: Edge) -> float:
         eps = 1e-3
@@ -514,8 +548,6 @@ class SkeletonSplineFinder:
                 t1 = t
         else: 
             raise Exception('t not found in spline')
-
-
 
 
 if __name__ == '__main__':
