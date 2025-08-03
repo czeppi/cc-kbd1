@@ -9,7 +9,8 @@ from dataclasses import dataclass
 sys.path.append(str(Path(__file__).absolute().parent.parent))
 
 from build123d import export_stl, make_face, extrude, offset, mirror
-from build123d import Part, Pos, Rot, Curve, Cylinder, Solid, Line, EllipticalCenterArc, AngularDirection, Edge, RadiusArc, Kind, Box, Plane, Sketch, Polyline, CounterBoreHole
+from build123d import Part, Pos, Rot, Curve, Cylinder, Solid, Line, EllipticalCenterArc, AngularDirection, Edge, RadiusArc, Kind, Box, Plane
+from build123d import Sketch, Polyline, CounterBoreHole, Compound
 from ocp_vscode import show_object
 
 from base import OUTPUT_DPATH

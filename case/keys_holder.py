@@ -7,7 +7,7 @@ from pathlib import Path
 from build123d import mirror, make_face, extrude, loft, export_stl, sweep
 from build123d import Polyline, Plane, Part, Pos, Rot, Box, Location, Compound, Rectangle, Circle, Sketch, BaseSketchObject, Cylinder, Edge, Vector, Face
 from ocp_vscode import show_object
-
+from hot_swap_socket import SwitchPairHolderCreator
 
 #
 # all length values in this file are in mm
@@ -498,7 +498,8 @@ class SkeletonSplineFinder:
         return Edge.make_spline_approx(points=points, tol=0.01, max_deg=3)
 
     def _create_tube(self, r: float, spline_edge: Edge) -> Part:
-        profile_template = Circle(r)
+        profile_template = Circle(0.9 * r)
+        profile_template2 = Circle(1.1 * r)
 
         start_tangent = spline_edge%0
         x_dir = start_tangent.cross(Vector(0, 0, 1)).normalized()
@@ -508,29 +509,31 @@ class SkeletonSplineFinder:
         end_tangent = spline_edge%1
         x_dir = end_tangent.cross(Vector(0, 0, 1)).normalized()
         plane1 = Plane(origin=spline_edge@1, z_dir=end_tangent, x_dir=x_dir)
-        profile1 = plane1 * profile_template
+        profile1 = plane1 * profile_template2
 
         return sweep([profile0, profile1], path=spline_edge, multisection=True)
     
     def _show_switch_holder(self):
         loc = KeyPairHolderFingerLocations()
         y2 = 11.36  # SwitchPairHolderCreator._create_middle_profile_face()#y2
-        box = Box(14, 2 * y2, 5)
+        
+        holder = Box(14, 2 * y2, 5)
+        holder_parts = SwitchPairHolderCreator().create()
 
-        index2_box = loc.index * Pos(X=-14) * copy.copy(box)
-        show_object(index2_box, name='index2')
+        index2_box = loc.index * Pos(X=-14) * Compound(label='index2', children=copy.copy(holder_parts))
+        show_object(index2_box)
 
-        index_box = loc.index * copy.copy(box)
-        show_object(index_box, name='index')
+        index_box = loc.index * Compound(label='index', children=copy.copy(holder_parts))
+        show_object(index_box)
 
-        middle_box = loc.middle * copy.copy(box)
-        show_object(middle_box, name='middle')
+        middle_box = loc.middle * Compound(label='middle', children=copy.copy(holder_parts))
+        show_object(middle_box)
 
-        ring_box = loc.ring * copy.copy(box)
-        show_object(ring_box, name='ring')
+        ring_box = loc.ring * Compound(label='ring', children=copy.copy(holder_parts))
+        show_object(ring_box)
 
-        pinkie_box = loc.pinkie * copy.copy(box)
-        show_object(pinkie_box, name='pinkie')
+        pinkie_box = loc.pinkie * Compound(label='pinkie', children=copy.copy(holder_parts))
+        show_object(pinkie_box)
     
     def _find_t_in_spline(self, x0: float, spline: Edge) -> float:
         eps = 1e-3
