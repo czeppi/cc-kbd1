@@ -106,16 +106,8 @@ def create_switch_socket():
     show_object(socket)
 
 
-class SwitchPairHolderCreator:
-    TILT_ANGLE = 15  # 15° for each side
-    HOLDER_LEFT_RIGHT_BORDER = 1.0
-    HOLDER_FRONT_BORDER = 3.2  # s. finger_parts.py#BACK_BORDER
-    HOLDER_BACK_BORDER = 1.0
-    MIDDLE_PART_HEIGHT_AT_CENTER = 3.0
-    CABLE_DIAMETER = 1.3  # AWG26 without tolerance
-    CABLE_SLOT_Y = 7.0
+class SwitchHolderCreatorBase:
     TOLERANCE = 0.1
-    CONN_POINT_DX = 4.5
 
     @property
     def _square_hole_len(self) -> float:
@@ -124,7 +116,98 @@ class SwitchPairHolderCreator:
     @property
     def _square_hole_height(self) -> float:
         return kailh_choc_v1_data.SUB_BODY_HEIGHT - self.TOLERANCE
+
+    def _iter_switch_holes(self) -> Iterator[Solid]:
+        data = kailh_choc_v1_data
+        tol = self.TOLERANCE
+        height = data.STUBS_HEIGHT + tol
+        z_off = hot_swap_socket_data.STUDS_HEIGHT - height/2
+        yield Pos(Z=z_off) * Cylinder(radius=data.CENTER_STUB_RADIUS + tol, height=height)
+        yield Pos(Z=z_off, X=-data.OUTER_STUB_CX) * Cylinder(radius=data.OUTER_STUB_RADIUS + tol, height=height)
+        yield Pos(Z=z_off, X=data.OUTER_STUB_CX) * Cylinder(radius=data.OUTER_STUB_RADIUS + tol, height=height)
+
+    def _iter_hot_swap_socket_studs(self) -> Iterator[Solid]:
+        data = hot_swap_socket_data
+        h = data.STUDS_HEIGHT
+        r = data.STUDS_RADIUS
+        cyl = Pos(Z=h/2) * Cylinder(radius=r, height=h)
+        dx = data.STUDS_DX / 2
+        dy = data.STUDS_DY / 2
+
+        y0 = hot_swap_socket_data.Y_OFFSET
+        x0 = hot_swap_socket_data.X_OFFSET
+
+        yield Pos(X=x0 - dx, Y=y0 + dy) * copy.copy(cyl)
+        yield Pos(X=x0 + dx, Y=y0 - dy) * copy.copy(cyl)    
     
+
+class SingleSwitchHolderCreator(SwitchHolderCreatorBase):  # for index finger
+    HOLDER_LEFT_RIGHT_BORDER = 1.0
+    HOLDER_FRONT_BACK_BORDER = 1.0
+    CONN_POINT_DX = 4
+    CONN_POINT_DY = 4
+
+    def create(self, output_dpath: Path|None=None) -> list[Solid]:
+        top_part = self.create_top()
+        #middle_part = self.create_middle_part()
+
+        if output_dpath:
+            export_stl(top_part, OUTPUT_DPATH / 'single-switch-holder-top.stl')
+            #export_stl(middle_part, OUTPUT_DPATH / 'single-switch-holder-middle.stl')
+
+        return [top_part] #, middle_part]
+    
+    def create_top(self) -> Solid:
+        """ 
+        origin: x, y: center of hole, z: bottom of top part
+        """
+        # 
+        x_border = self.HOLDER_LEFT_RIGHT_BORDER
+        y_border = self.HOLDER_FRONT_BACK_BORDER
+
+        hole_len = self._square_hole_len
+        hole_height = self._square_hole_height
+        studs_height = hot_swap_socket_data.STUDS_HEIGHT
+
+        box_dx = hole_len + 2 * x_border
+        box_dy = hole_len + 2 * y_border
+        box_dz = hole_height + studs_height
+
+        body = Pos(Z=box_dz/2) * Box(box_dx, box_dy, box_dz)
+        square_hole = Pos(Z=hole_height/2 + studs_height) * Box(hole_len, hole_len, hole_height)
+
+        switch_holes = list(self._iter_switch_holes())
+        hot_swap_socket_studs = list(self._iter_hot_swap_socket_studs())
+        counter_bore_hole = self._create_top_counter_bore_hole()
+        neg_parts = [square_hole] + switch_holes + hot_swap_socket_studs + [counter_bore_hole]
+
+        top_part = body - neg_parts
+        top_part.label = 'top'
+        return top_part
+
+    def _create_top_counter_bore_hole(self) -> Part:
+        m2 = data.FlatHeadScrewM2
+        h = hot_swap_socket_data.STUDS_HEIGHT + self._square_hole_height 
+        
+        pos = Pos(X=self.CONN_POINT_DX, Y=self.CONN_POINT_DY, Z=h)
+        hole = CounterBoreHole(radius=m2.RADIUS, 
+                               counter_bore_radius=m2.HEAD_RADIUS, 
+                               counter_bore_depth=m2.HEAD_HEIGHT, 
+                               depth=1000)
+
+        return Plane.XY * pos * hole
+
+
+class SwitchPairHolderCreator(SwitchHolderCreatorBase):
+    TILT_ANGLE = 15  # 15° for each side
+    HOLDER_LEFT_RIGHT_BORDER = 1.0
+    HOLDER_FRONT_BORDER = 3.2  # s. finger_parts.py#BACK_BORDER
+    HOLDER_BACK_BORDER = 1.0
+    MIDDLE_PART_HEIGHT_AT_CENTER = 3.0
+    CABLE_DIAMETER = 1.3  # AWG26 without tolerance
+    CABLE_SLOT_Y = 7.0
+    CONN_POINT_DX = 4.5
+
     def create(self, output_dpath: Path|None=None) -> list[Solid]:
         top_part = self.create_top()
         middle_part = self.create_middle_part()
@@ -143,7 +226,7 @@ class SwitchPairHolderCreator:
         front_part = Rot(Z=180) * copy.copy(back_part)
         top_part = back_part + front_part
 
-        # => origin: x, y: center, z: bottom
+        # => origin: x, y: center, z: bottom of top part
 
         top_part -= self._create_top_counter_bore_hole()
 
@@ -201,20 +284,6 @@ class SwitchPairHolderCreator:
         ]
         back_half = Polyline(points)
         return make_face(Plane.YZ * back_half)
-    
-    def _iter_hot_swap_socket_studs(self) -> Iterator[Solid]:
-        data = hot_swap_socket_data
-        h = data.STUDS_HEIGHT
-        r = data.STUDS_RADIUS
-        cyl = Pos(Z=h/2) * Cylinder(radius=r, height=h)
-        dx = data.STUDS_DX / 2
-        dy = data.STUDS_DY / 2
-
-        y0 = hot_swap_socket_data.Y_OFFSET
-        x0 = hot_swap_socket_data.X_OFFSET
-
-        yield Pos(X=x0 - dx, Y=y0 + dy) * copy.copy(cyl)
-        yield Pos(X=x0 + dx, Y=y0 - dy) * copy.copy(cyl)    
     
     def _create_top_counter_bore_hole(self) -> Part:
         m2 = data.FlatHeadScrewM2
@@ -328,15 +397,6 @@ class SwitchPairHolderCreator:
 
     def create_foot(self) -> Solid:
         pass
-
-    def _iter_switch_holes(self) -> Iterator[Solid]:
-        data = kailh_choc_v1_data
-        tol = self.TOLERANCE
-        height = data.STUBS_HEIGHT + tol
-        z_off = hot_swap_socket_data.STUDS_HEIGHT - height/2
-        yield Pos(Z=z_off) * Cylinder(radius=data.CENTER_STUB_RADIUS + tol, height=height)
-        yield Pos(Z=z_off, X=-data.OUTER_STUB_CX) * Cylinder(radius=data.OUTER_STUB_RADIUS + tol, height=height)
-        yield Pos(Z=z_off, X=data.OUTER_STUB_CX) * Cylinder(radius=data.OUTER_STUB_RADIUS + tol, height=height)
 
 
 class SwitchSocketCreator:

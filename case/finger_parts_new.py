@@ -1,8 +1,8 @@
 from finger_parts_common import LEFT_RIGHT_BORDER, CUT_WIDTH, SwitchPairHolderFingerLocations
-from hot_swap_socket import SwitchPairHolderCreator
+from hot_swap_socket import SwitchPairHolderCreator, SingleSwitchHolderCreator
 
 
-from build123d import Box, Circle, Compound, Cylinder, Edge, Part, Plane, Pos, Solid, Sphere, Vector, sweep
+from build123d import Box, Circle, Compound, Cylinder, Edge, Part, Plane, Pos, Rot, Solid, Sphere, Vector, sweep
 from ocp_vscode import show_object
 
 
@@ -24,7 +24,7 @@ class CaseAssemblyCreator:
         self._holders: list[Solid] = None
 
     def create(self) -> Compound:
-        self._skeleton = SkeletonCreator2().create()
+        self._skeleton = SkeletonCreator().create()
         children = [self._skeleton] + list(self._iter_switch_holders())
         return Compound(label="case_assembly", children=children)
 
@@ -35,8 +35,9 @@ class CaseAssemblyCreator:
         # holder = Box(14, 2 * y2, 5)
 
         holder_parts = SwitchPairHolderCreator().create()
+        single_holder = SingleSwitchHolderCreator().create()
 
-        yield loc.index * Pos(X=-14) * Compound(label='index2', children=copy.copy(holder_parts))
+        yield loc.index * Pos(X=-18, Z=4) * Rot(Y=20) * Rot(Z=90) * Compound(label='index2', children=single_holder)
         yield loc.index * Compound(label='index', children=copy.copy(holder_parts))
         yield loc.middle * Compound(label='middle', children=copy.copy(holder_parts))
         yield loc.ring * Compound(label='ring', children=copy.copy(holder_parts))
@@ -46,7 +47,7 @@ class CaseAssemblyCreator:
         raise NotImplementedError()
 
 
-class SkeletonCreator2:
+class SkeletonCreator:
     TUBE_OUTER_RADIUS = 8
     TUBE_INNER_RADIUS = 5
     BASE_HOLDER_DISTANCE = 4
