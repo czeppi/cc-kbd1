@@ -1,25 +1,23 @@
 import copy
 import math
 from dataclasses import dataclass
-from typing import Iterator
 from pathlib import Path
 
-from build123d import mirror, make_face, extrude, loft, export_stl, sweep
-from build123d import Polyline, Plane, Part, Pos, Rot, Box, Location, Compound, Rectangle, Circle, Sketch, BaseSketchObject, Cylinder, Edge, Vector, Face, Sphere, Solid
+from build123d import mirror, make_face, extrude, loft, export_stl
+from build123d import Polyline, Plane, Part, Pos, Rot, Box, Compound, Rectangle, Sketch, BaseSketchObject, Cylinder
 from ocp_vscode import show_object
-from hot_swap_socket import SwitchPairHolderCreator
+from case.finger_parts_common import LEFT_RIGHT_BORDER
+from finger_parts_common import BACK_BORDER, CUT_WIDTH, TILT_ANGLE, KeyPairHolderFingerLocations, KeyPairHolderSwinger
+from finger_parts_new import CaseAssemblyCreator
+
 
 #
 # all length values in this file are in mm
 #
 
-CUT_WIDTH = 13.9
-LEFT_RIGHT_BORDER = 3.0
 FRONT_BORDER = 3.0
-BACK_BORDER = 3.2  # 2.7 is minimum
 THICKNESS = 2.0
 RIM_DY = 2.0
-TILT_ANGLE = 15.0  # => the knick is 30 degree
 HOLDER_HEIGHT = 10.0  # at the crease edge
 
 HOT_SWAP_SOCKET_PIN_SLOT_Y_START = 1.5
@@ -37,11 +35,6 @@ OUTPUT_DPATH = Path('output')
 
 
 def main():
-    creator = CaseAssemblyCreator()
-    case_assembly = creator.create()
-    show_object(case_assembly)
-    return
-
     creator = FinalAssemblyCreator()
     case_assembly = creator.create_with_slots()
 
@@ -66,17 +59,17 @@ class FinalAssemblyCreator:
 
     def _create_holder_with_slots_map(self) -> Compound:
         holder_without_slots_map = HolderAssemblyCreator().create_map()
-        skeleton_without_slots = SkeletonCreator1(tolerance=TOLERANCE, height_offset=-SLOT_LEN).create()
+        skeleton_without_slots = SkeletonCreator(tolerance=TOLERANCE, height_offset=-SLOT_LEN).create()
         return {name: holder - skeleton_without_slots 
                 for name, holder in holder_without_slots_map.items()}
 
     def _create_skeleton_with_slots(self) -> Part:
         holder_without_slots_map = HolderAssemblyCreator(tolerance=TOLERANCE).create_map()
         holders_without_slots = Compound(label='holders', children=list(holder_without_slots_map.values()))
-        skeleton_without_slots = SkeletonCreator1(tolerance=TOLERANCE, height_offset=-SLOT_LEN).create()
+        skeleton_without_slots = SkeletonCreator(tolerance=TOLERANCE, height_offset=-SLOT_LEN).create()
 
         holders_with_slots = holders_without_slots - skeleton_without_slots
-        return SkeletonCreator1().create() - holders_with_slots
+        return SkeletonCreator().create() - holders_with_slots
     
     def save(self, output_dpath: Path) -> None:
         if self._skeleton:
@@ -86,7 +79,7 @@ class FinalAssemblyCreator:
             export_stl(holder, output_dpath / f'{name}.stl')
 
 
-class SkeletonCreator1:
+class SkeletonCreator:
 
     def __init__(self, tolerance: float = 0.0, height_offset: float = 0.0):
         self._tolerance = tolerance
@@ -358,237 +351,6 @@ class KeyPairHolderCreator:
         pos = Pos(X=dx, Y=dy, Z=dz) 
         
         return pos * box
-
-
-class KeyPairHolderFingerLocations:
-    """ create location of key pair holder between the different fingers
-
-    the names of the positions:
-
-        index2: index finger turned outside
-        index:  normal position of the index finger 
-        middle: position of the middle finger
-        ring:   position of the ring finger
-        pinkie: position of the pinkie
-    """
-
-    def __init__(self):
-        self._index_to_index2 = self._calc_index_index2_pos()
-        self._index_to_middle = self._create_location(move=(22, 7, 2.5), rotate=(-8, 0, -1))
-        self._middle_to_ring = self._create_location(move=(25.2, -6.7, -2.4), rotate=(2, 0, 0))
-        self._ring_to_pinkie = self._create_location(move=(33, -20, -16), rotate=(14, 30, 4))
-
-        self._ring_move_correction = self._create_location(move=(2, -2, 0), rotate=(0, 0, 0))
-        self._ring_rotate_correction = self._create_location(move=(2, -2, 0), rotate=(0, 5, 0))
-        self._pinkie_rotate_correction = self._create_location(move=(0, 0, 0), rotate=(0, 0, -10))
-
-    def _calc_index_index2_pos(self) -> Location:
-        """ calculate the relative position of the index finger, if I rotate it away from the middle finger
-        """
-        dist_finger_root_key_center = 85  # mm
-        key_width = 19.9
-        key_height = 20  # mm
-        key_gap = 0  # mm
-
-        dx = (key_width + key_gap) / 2
-        ry = dist_finger_root_key_center - key_height / 2
-        
-        phi_z_radian = -2 * math.atan(dx /ry)
-        phi_z_degree = phi_z_radian * (180 / math.pi)
-        
-        dx = -ry * math.sin(phi_z_radian)
-        dy = ry * math.cos(phi_z_radian) - ry
-
-        print(f'index2: dx={dx}, dy={dy}, phi_z_degree={phi_z_degree}')
-
-        swinger = KeyPairHolderSwinger()
-        return swinger.front_centered_to_normal * Pos(X=-dx, Y=dy) * Rot(Z=-phi_z_degree) * swinger.normal_to_front_centered
-
-    def _create_location(self, move: tuple[float, float, float], rotate: tuple[float, float, float]) -> Location:
-        """ rotation order: y-axis, x-axis, z-axis
-        """
-        dx, dy, dz = move 
-        rotx, roty, rotz = rotate
-
-        swinger = KeyPairHolderSwinger()
-        return swinger.front_centered_to_normal * Pos(X=dx, Y=dy, Z=dz) * Rot(Z=rotz) * Rot(X=rotx) * Rot(Y=roty) * swinger.normal_to_front_centered
-
-    @property
-    def index(self) -> Location:
-        return Pos(0, 0, 0)
-    
-    @property
-    def index2(self) -> Location:
-        return self._index_to_index2
-    
-    @property
-    def middle(self) -> Location:
-        return self._index_to_middle
-    
-    @property
-    def ring(self) -> Location:
-        return self._ring_move_correction * self._index_to_middle * self._middle_to_ring * self._ring_rotate_correction
-    
-    @property
-    def pinkie(self) -> Location:
-        return self._index_to_middle * self._middle_to_ring * self._ring_to_pinkie * self._pinkie_rotate_correction
-
-
-class KeyPairHolderSwinger:
-    """ create locations for a holder of a pair of keys
-
-        the normal position is, when the crease edge is on the x axis
-        and the middle of the crease edge coincident the origin
-
-        the front/bach centered position is, when the center of the cut from the front/back key holder coincidents the origin.
-    """
-
-    def __init__(self):
-        self._dy = BACK_BORDER + CUT_WIDTH / 2
-
-    @property
-    def normal_to_front_centered(self) -> Location:
-        return Pos(Y=self._dy) * Rot(X=TILT_ANGLE)
-    
-    @property
-    def front_centered_to_normal(self) -> Location:
-        return Rot(X=-TILT_ANGLE) * Pos(Y=-self._dy)
-
-    @property
-    def normal_to_back_centered(self) -> Location:
-        return Pos(Y=-self._dy) * Rot(X=-TILT_ANGLE)
-    
-    @property
-    def back_centered_to_normal(self) -> Location:
-        return Rot(X=TILT_ANGLE) * Pos(Y=self._dy)
-    
-
-class CaseAssemblyCreator:
-
-    def __init__(self):
-        self._skeleton: Part | None = None
-        self._holders: list[Solid] = None
-
-    def create(self) -> Compound:
-        self._skeleton = SkeletonCreator2().create()
-        children = [self._skeleton] + list(self._iter_switch_holders())
-        return Compound(label="case_assembly", children=children)
-    
-    def _iter_switch_holders(self) -> Iterator[Compound]:
-        loc = KeyPairHolderFingerLocations()
-
-        # y2 = 11.36  # SwitchPairHolderCreator._create_middle_profile_face()#y2
-        # holder = Box(14, 2 * y2, 5)
-        
-        holder_parts = SwitchPairHolderCreator().create()
-
-        yield loc.index * Pos(X=-14) * Compound(label='index2', children=copy.copy(holder_parts))
-        yield loc.index * Compound(label='index', children=copy.copy(holder_parts))
-        yield loc.middle * Compound(label='middle', children=copy.copy(holder_parts))
-        yield loc.ring * Compound(label='ring', children=copy.copy(holder_parts))
-        yield loc.pinkie * Compound(label='pinkie', children=copy.copy(holder_parts))
-
-    def save(self, output_path: Path) -> None:
-        raise NotImplementedError()
-
-
-class SkeletonCreator2:
-
-    def __init__(self):
-        self._tube_outer_radius = 8
-        self._tube_inner_radius = 5
-        self._base_holder_distance = 4
-        self._base_offset = 0.5  # make base position a little bit above the tube
-        self._dz = SwitchPairHolderCreator.MIDDLE_PART_HEIGHT_AT_CENTER + self._base_holder_distance + self._base_offset + self._tube_outer_radius
-
-    def create(self) -> Part:
-        spline_edge = self._create_spline_edge()
-        outer_tube = self._create_tube(r=self._tube_outer_radius, spline_edge=spline_edge)
-        inner_tube = self._create_tube(r=self._tube_inner_radius, spline_edge=spline_edge)
-
-        key_bases = list(self._iter_key_bases())
-        sphere = self._create_sphere()
-        sphere_handle = self._create_sphere_handle()
-
-        skeleton_with_sphere = (outer_tube + key_bases + sphere_handle + sphere) - inner_tube
-        skeleton_with_sphere.label = 'skeleton'
-        return skeleton_with_sphere
-    
-    def _create_spline_edge(self) -> Edge:
-        loc = KeyPairHolderFingerLocations()
-        dz = self._dz
-        holder_dx = LEFT_RIGHT_BORDER + CUT_WIDTH + LEFT_RIGHT_BORDER
-        skeleton_start = loc.index * Pos(X=-3/2*holder_dx, Y=-5)
-        skeleton_end = loc.pinkie * Pos(X=holder_dx/2+5, Y=-5)
-
-        points = [#Vector(-30, -15, -dz), 
-                  (skeleton_start * Pos(Z=-dz)).position,
-                  (loc.index * Pos(X=-holder_dx/2, Z=-dz)).position,
-                  (loc.middle * Pos(Z=-dz)).position, 
-                  (loc.ring * Pos(Z=-dz)).position, 
-                  (loc.pinkie * Pos(Z=-dz)).position,
-                  (skeleton_end * Pos(Z=-dz)).position]
-        
-        return Edge.make_spline_approx(points=points, tol=0.01, max_deg=3)
-    
-    def _create_tube(self, r: float, spline_edge: Edge) -> Part:
-        profile_template = Circle(1.0 * r)  # Circle(0.9 * r)
-        profile_template2 = Circle(1.0 * r)  # Circle(1.1 * r)
-
-        start_tangent = spline_edge%0
-        x_dir = start_tangent.cross(Vector(0, 0, 1)).normalized()
-        plane0 = Plane(origin=spline_edge@0, z_dir=start_tangent, x_dir=x_dir)
-        profile0 = plane0 * profile_template
-
-        end_tangent = spline_edge%1
-        x_dir = end_tangent.cross(Vector(0, 0, 1)).normalized()
-        plane1 = Plane(origin=spline_edge@1, z_dir=end_tangent, x_dir=x_dir)
-        profile1 = plane1 * profile_template2
-
-        return sweep([profile0, profile1], path=spline_edge, multisection=True)
-    
-    def _iter_key_bases(self) -> Iterator[Part]:
-        loc = KeyPairHolderFingerLocations()
-
-        base_height = 3
-        base_len = 18
-        index_base_width = 2 * base_len
-        z_dist = SwitchPairHolderCreator.MIDDLE_PART_HEIGHT_AT_CENTER + self._base_holder_distance + base_height / 2
-
-        yield loc.index * Pos(X=(base_len - index_base_width) / 2, Z=-z_dist) * Box(index_base_width, base_len, base_height)
-        yield loc.middle * Pos(Z=-z_dist) * Box(base_len, base_len, base_height)
-        yield loc.ring * Pos(Z=-z_dist) * Box(base_len, base_len, base_height)
-        yield loc.pinkie * Pos(Z=-z_dist) * Box(base_len, base_len, base_height)
-
-    def _create_sphere(self) -> Part:
-        loc = KeyPairHolderFingerLocations()
-        sphere_radius = 12
-        dz = self._dz + self._tube_outer_radius + sphere_radius + 1
-        return loc.middle * Pos(Z=-dz) * Sphere(radius=sphere_radius)
-
-    def _create_sphere_handle(self) -> Part:
-        loc = KeyPairHolderFingerLocations()
-        handle_radius = 7
-        dz = self._dz + self._tube_outer_radius
-        return loc.middle * Pos(Z=-dz) * Cylinder(radius=handle_radius, height=10)
-
-    # def _find_t_in_spline(self, x0: float, spline: Edge) -> float:
-    #     """ not used in the moment"""
-    #     eps = 1e-3
-    #     t1 = 0.0
-    #     t2 = 1.0
-
-    #     for i in range(100):
-    #         t = (t1 + t2) / 2
-    #         p = spline@t
-    #         if abs(p.X - x0) < eps:
-    #             return t
-    #         if p.X < x0:
-    #             t2 = t
-    #         else:
-    #             t1 = t
-    #     else: 
-    #         raise Exception('t not found in spline')
 
 
 if __name__ == '__main__':

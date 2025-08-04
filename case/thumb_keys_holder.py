@@ -6,7 +6,7 @@ from ocp_vscode import show_object
 from base import TOLERANCE, OUTPUT_DPATH
 from thumb_holder import ThumbMiddlePartCreator
 from thumb_base import THICKNESS, SLOT_LEN
-from keys_holder import KeyPairHolderCreator
+from case.finger_parts_old import KeyPairHolderCreator
 
 
 def main():
