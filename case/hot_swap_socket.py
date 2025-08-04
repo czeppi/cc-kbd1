@@ -109,7 +109,7 @@ def create_switch_socket():
 class SwitchPairHolderCreator:
     TILT_ANGLE = 15  # 15° for each side
     HOLDER_LEFT_RIGHT_BORDER = 1.0
-    HOLDER_FRONT_BORDER = 3.2  # s. keys_holder.py#BACK_BORDER
+    HOLDER_FRONT_BORDER = 3.2  # s. finger_parts.py#BACK_BORDER
     HOLDER_BACK_BORDER = 1.0
     MIDDLE_PART_HEIGHT_AT_CENTER = 3.0
     CABLE_DIAMETER = 1.3  # AWG26 without tolerance
@@ -343,7 +343,7 @@ class SwitchSocketCreator:
 
     def __init__(self):
         self._holder_left_right_border = 1.0
-        self._holder_front_border = 3.2  # s. keys_holder.py#BACK_BORDER
+        self._holder_front_border = 3.2  # s. finger_parts.py#BACK_BORDER
         self._holder_back_border = 1.0
         self._tolerance = 0.1
 

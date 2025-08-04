@@ -6,13 +6,13 @@ from ocp_vscode import show_object
 from base import TOLERANCE, OUTPUT_DPATH
 from thumb_holder import ThumbMiddlePartCreator
 from thumb_base import THICKNESS, SLOT_LEN
-from case.finger_parts_old import KeyPairHolderCreator
+from finger_parts_old import SwitchPairHolderCreator
 
 
 def main():
     creator = ThumbKeysHolderCreator()
     holder = creator.create()
-    export_stl(holder, OUTPUT_DPATH / 'thumb-keys-holder.stl')
+    export_stl(holder, OUTPUT_DPATH / 'thumb-switches-holder.stl')
     show_object(holder)
 
 
@@ -25,7 +25,7 @@ class ThumbKeysHolderCreator:
         eps = 1E-6
         slot_width = THICKNESS + 2 * TOLERANCE
 
-        holder = KeyPairHolderCreator(with_hot_swap_slots=False).create()
+        holder = SwitchPairHolderCreator(with_hot_swap_slots=False).create()
         box = holder.bounding_box()
         assert abs(box.min.Y + box.max.Y) < eps  # part should be symmetric
         box_y_len = box.max.Y - box.min.Y

@@ -7,7 +7,7 @@ from build123d import mirror, make_face, extrude, loft, export_stl
 from build123d import Polyline, Plane, Part, Pos, Rot, Box, Compound, Rectangle, Sketch, BaseSketchObject, Cylinder
 from ocp_vscode import show_object
 from case.finger_parts_common import LEFT_RIGHT_BORDER
-from finger_parts_common import BACK_BORDER, CUT_WIDTH, TILT_ANGLE, KeyPairHolderFingerLocations, KeyPairHolderSwinger
+from finger_parts_common import BACK_BORDER, CUT_WIDTH, TILT_ANGLE, SwitchPairHolderFingerLocations, SwitchPairHolderSwinger
 from finger_parts_new import CaseAssemblyCreator
 
 
@@ -54,8 +54,8 @@ class FinalAssemblyCreator:
         self._holder_map = self._create_holder_with_slots_map()
         self._skeleton = self._create_skeleton_with_slots()
 
-        key_holders = Compound(label='holders', children=list(self._holder_map.values()))
-        return Compound(label="assembly", children=[key_holders, self._skeleton])
+        switch_holders = Compound(label='holders', children=list(self._holder_map.values()))
+        return Compound(label="assembly", children=[switch_holders, self._skeleton])
 
     def _create_holder_with_slots_map(self) -> Compound:
         holder_without_slots_map = HolderAssemblyCreator().create_map()
@@ -86,7 +86,7 @@ class SkeletonCreator:
         self._height_offset = height_offset
 
     def create(self) -> Part:
-        loc = KeyPairHolderFingerLocations()
+        loc = SwitchPairHolderFingerLocations()
         u_profile = self._create_u_profile()
 
         holder_dx = LEFT_RIGHT_BORDER + CUT_WIDTH + LEFT_RIGHT_BORDER
@@ -139,7 +139,7 @@ class SkeletonCreator:
 class HolderAssemblyCreator:
 
     def __init__(self, tolerance: float = 0.0):
-        self._creator = KeyPairHolderCreator(tolerance=tolerance)
+        self._creator = SwitchPairHolderCreator(tolerance=tolerance)
 
     def create_map(self) -> dict[str, Part]:
         return {
@@ -150,7 +150,7 @@ class HolderAssemblyCreator:
         }
     
     def create_index_holder(self) -> Compound:
-        loc = KeyPairHolderFingerLocations()
+        loc = SwitchPairHolderFingerLocations()
         creator = self._creator
 
         index1_holder = creator.create(front_left_bevel=-9, front_right_bevel=-14, back_left_bevel=-3, back_right_bevel=0, 
@@ -163,14 +163,14 @@ class HolderAssemblyCreator:
         return Compound(label="index-holder", children=[index1_holder, index2_holder])
 
     def create_middle_holder(self) -> Part:
-        loc = KeyPairHolderFingerLocations()
+        loc = SwitchPairHolderFingerLocations()
         creator = self._creator
         middle_holder = loc.middle * creator.create(front_left_bevel=-9, front_right_bevel=-5, back_left_bevel=-5, back_right_bevel=-8)
         middle_holder.label = 'middle'
         return middle_holder
 
     def create_ring_holder(self) -> Part:
-        loc = KeyPairHolderFingerLocations()
+        loc = SwitchPairHolderFingerLocations()
         creator = self._creator
         ring_holder = loc.ring * creator.create(front_left_bevel=-9, front_right_bevel=-1, back_left_bevel=-2, back_right_bevel=-10,
                                                 extra_left_height=1.0)
@@ -178,7 +178,7 @@ class HolderAssemblyCreator:
         return ring_holder
 
     def create_pinkie_holder(self) -> Part:
-        loc = KeyPairHolderFingerLocations()
+        loc = SwitchPairHolderFingerLocations()
         creator = self._creator
         pinkie_holder = loc.pinkie * creator.create(front_left_bevel=-14, front_right_bevel=-2, back_left_bevel=2, back_right_bevel=-7,  
                                                     extra_left_height=1.0)
@@ -186,7 +186,7 @@ class HolderAssemblyCreator:
         return pinkie_holder
     
 
-class KeyPairHolderCreator:
+class SwitchPairHolderCreator:
 
     def __init__(self, with_hot_swap_slots: bool = True, tolerance: float = 0.0):
         self._width = LEFT_RIGHT_BORDER + CUT_WIDTH + LEFT_RIGHT_BORDER + 2 * tolerance
@@ -309,7 +309,7 @@ class KeyPairHolderCreator:
 
     def _cut(self, holder: Part) -> Part:
         thickness = self._thickness
-        swinger = KeyPairHolderSwinger()
+        swinger = SwitchPairHolderSwinger()
         cut_box = Pos(Z=-thickness/2) * Box(CUT_WIDTH, CUT_WIDTH, 1.1 * thickness)
         
 

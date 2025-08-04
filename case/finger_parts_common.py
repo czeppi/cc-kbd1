@@ -12,13 +12,13 @@ TILT_ANGLE = 15.0  # => the knick is 30 degree
 LEFT_RIGHT_BORDER = 3.0
 
 
-class KeyPairHolderSwinger:
-    """ create locations for a holder of a pair of keys
+class SwitchPairHolderSwinger:
+    """ create locations for a holder of a pair of switches
 
         the normal position is, when the crease edge is on the x axis
         and the middle of the crease edge coincident the origin
 
-        the front/bach centered position is, when the center of the cut from the front/back key holder coincidents the origin.
+        the front/bach centered position is, when the center of the cut from the front/back swicth holder coincidents the origin.
     """
 
     def __init__(self):
@@ -41,8 +41,8 @@ class KeyPairHolderSwinger:
         return Rot(X=TILT_ANGLE) * Pos(Y=self._dy)
 
 
-class KeyPairHolderFingerLocations:
-    """ create location of key pair holder between the different fingers
+class SwitchPairHolderFingerLocations:
+    """ create location of switch pair holder between the different fingers
 
     the names of the positions:
 
@@ -66,13 +66,13 @@ class KeyPairHolderFingerLocations:
     def _calc_index_index2_pos(self) -> Location:
         """ calculate the relative position of the index finger, if I rotate it away from the middle finger
         """
-        dist_finger_root_key_center = 85  # mm
-        key_width = 19.9
-        key_height = 20  # mm
-        key_gap = 0  # mm
+        dist_finger_root_switch_center = 85  # mm
+        switch_width = 19.9
+        switch_height = 20  # mm
+        switch_gap = 0  # mm
 
-        dx = (key_width + key_gap) / 2
-        ry = dist_finger_root_key_center - key_height / 2
+        dx = (switch_width + switch_gap) / 2
+        ry = dist_finger_root_switch_center - switch_height / 2
 
         phi_z_radian = -2 * math.atan(dx /ry)
         phi_z_degree = phi_z_radian * (180 / math.pi)
@@ -82,7 +82,7 @@ class KeyPairHolderFingerLocations:
 
         print(f'index2: dx={dx}, dy={dy}, phi_z_degree={phi_z_degree}')
 
-        swinger = KeyPairHolderSwinger()
+        swinger = SwitchPairHolderSwinger()
         return swinger.front_centered_to_normal * Pos(X=-dx, Y=dy) * Rot(Z=-phi_z_degree) * swinger.normal_to_front_centered
 
     def _create_location(self, move: tuple[float, float, float], rotate: tuple[float, float, float]) -> Location:
@@ -91,7 +91,7 @@ class KeyPairHolderFingerLocations:
         dx, dy, dz = move
         rotx, roty, rotz = rotate
 
-        swinger = KeyPairHolderSwinger()
+        swinger = SwitchPairHolderSwinger()
         return swinger.front_centered_to_normal * Pos(X=dx, Y=dy, Z=dz) * Rot(Z=rotz) * Rot(X=rotx) * Rot(Y=roty) * swinger.normal_to_front_centered
 
     @property

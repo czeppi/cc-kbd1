@@ -88,8 +88,8 @@ class ThumbMiddlePartCreator:
     ANGLE2 = 10.0  # from point 3 -> point 4
     PROFILE_Z12 = 45.0
     PROFILE_Z34 = 25.0
-    KEY_HOLDER_THICKNESS = 2.0  # s. keysholder.py
-    KEY_HOLDER_WIDTH = 20.0  # s. keysholder.py
+    SWITCH_HOLDER_THICKNESS = 2.0  # s. keysholder.py
+    SWITCH_HOLDER_WIDTH = 20.0  # s. keysholder.py
     TRACKBALL_SLOTS_DIST = 18.0  # from center to center
     THUMB_FOOT_DIST = 5 * STUD_DISTANCE_X  # from center to center of comb for slots
 
@@ -98,7 +98,7 @@ class ThumbMiddlePartCreator:
         right_margin = 2.0
         sin1 = math.sin(math.radians(self.ANGLE1))
         cos1 = math.cos(math.radians(self.ANGLE1))
-        return THICKNESS + (self.KEY_HOLDER_WIDTH + 2 * TOLERANCE) * cos1 + SLOT_LEN * sin1 + right_margin        
+        return THICKNESS + (self.SWITCH_HOLDER_WIDTH + 2 * TOLERANCE) * cos1 + SLOT_LEN * sin1 + right_margin        
 
     @property
     def PROFILE_Z1(self) -> float:
@@ -132,7 +132,7 @@ class ThumbMiddlePartCreator:
         body = self._create_body()
         for slot in self._iter_create_bottom_slots():
             body -= slot
-        for slot in self._iter_thumb_keys_slots():
+        for slot in self._iter_thumb_switch_slots():
             body -= slot
         for slot in self._iter_trackball_slots():
             body -= slot
@@ -191,16 +191,16 @@ class ThumbMiddlePartCreator:
         yield Pos(X=x0) * Box(dx, 100.0, 2 + SLOT_LEN)
         yield Pos(X=x0 + feet_dist) * Box(dx, 100.0, 2 + SLOT_LEN)
 
-    def _iter_thumb_keys_slots(self) -> Iterator[Part]:
+    def _iter_thumb_switch_slots(self) -> Iterator[Part]:
         cos1 = math.cos(math.radians(self.ANGLE1))
         tan1 = math.tan(math.radians(self.ANGLE1))
 
-        slots_dist = self.KEY_HOLDER_WIDTH - self.KEY_HOLDER_THICKNESS  # from center to center
+        slots_dist = self.SWITCH_HOLDER_WIDTH - self.SWITCH_HOLDER_THICKNESS  # from center to center
 
-        dx = self.KEY_HOLDER_THICKNESS + 2 * TOLERANCE
+        dx = self.SWITCH_HOLDER_THICKNESS + 2 * TOLERANCE
         y_angle = self._calc_y_angle_in_degree(dx=self.X_LEN1, dz=self.PROFILE_Z2 - self.PROFILE_Z1)
 
-        x_off = THICKNESS + (self.KEY_HOLDER_WIDTH / 2 + TOLERANCE) * cos1
+        x_off = THICKNESS + (self.SWITCH_HOLDER_WIDTH / 2 + TOLERANCE) * cos1
         z_off = self.PROFILE_Z1 + x_off * tan1
 
         for slot_x in [-slots_dist/2, slots_dist/2]:

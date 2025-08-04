@@ -1,4 +1,4 @@
-from finger_parts_common import LEFT_RIGHT_BORDER, CUT_WIDTH, KeyPairHolderFingerLocations
+from finger_parts_common import LEFT_RIGHT_BORDER, CUT_WIDTH, SwitchPairHolderFingerLocations
 from hot_swap_socket import SwitchPairHolderCreator
 
 
@@ -29,7 +29,7 @@ class CaseAssemblyCreator:
         return Compound(label="case_assembly", children=children)
 
     def _iter_switch_holders(self) -> Iterator[Compound]:
-        loc = KeyPairHolderFingerLocations()
+        loc = SwitchPairHolderFingerLocations()
 
         # y2 = 11.36  # SwitchPairHolderCreator._create_middle_profile_face()#y2
         # holder = Box(14, 2 * y2, 5)
@@ -47,29 +47,29 @@ class CaseAssemblyCreator:
 
 
 class SkeletonCreator2:
+    TUBE_OUTER_RADIUS = 8
+    TUBE_INNER_RADIUS = 5
+    BASE_HOLDER_DISTANCE = 4
+    BASE_OFFSET = 0.5  # make base position a little bit above the tube
 
     def __init__(self):
-        self._tube_outer_radius = 8
-        self._tube_inner_radius = 5
-        self._base_holder_distance = 4
-        self._base_offset = 0.5  # make base position a little bit above the tube
-        self._dz = SwitchPairHolderCreator.MIDDLE_PART_HEIGHT_AT_CENTER + self._base_holder_distance + self._base_offset + self._tube_outer_radius
+        self._dz = SwitchPairHolderCreator.MIDDLE_PART_HEIGHT_AT_CENTER + self.BASE_HOLDER_DISTANCE + self.BASE_OFFSET + self.TUBE_OUTER_RADIUS
 
     def create(self) -> Part:
         spline_edge = self._create_spline_edge()
-        outer_tube = self._create_tube(r=self._tube_outer_radius, spline_edge=spline_edge)
-        inner_tube = self._create_tube(r=self._tube_inner_radius, spline_edge=spline_edge)
+        outer_tube = self._create_tube(r=self.TUBE_OUTER_RADIUS, spline_edge=spline_edge)
+        inner_tube = self._create_tube(r=self.TUBE_INNER_RADIUS, spline_edge=spline_edge)
 
-        key_bases = list(self._iter_key_bases())
+        switch_bases = list(self._iter_switch_bases())
         sphere = self._create_sphere()
         sphere_handle = self._create_sphere_handle()
 
-        skeleton_with_sphere = (outer_tube + key_bases + sphere_handle + sphere) - inner_tube
+        skeleton_with_sphere = (outer_tube + switch_bases + sphere_handle + sphere) - inner_tube
         skeleton_with_sphere.label = 'skeleton'
         return skeleton_with_sphere
 
     def _create_spline_edge(self) -> Edge:
-        loc = KeyPairHolderFingerLocations()
+        loc = SwitchPairHolderFingerLocations()
         dz = self._dz
         holder_dx = LEFT_RIGHT_BORDER + CUT_WIDTH + LEFT_RIGHT_BORDER
         skeleton_start = loc.index * Pos(X=-3/2*holder_dx, Y=-5)
@@ -101,13 +101,13 @@ class SkeletonCreator2:
 
         return sweep([profile0, profile1], path=spline_edge, multisection=True)
 
-    def _iter_key_bases(self) -> Iterator[Part]:
-        loc = KeyPairHolderFingerLocations()
+    def _iter_switch_bases(self) -> Iterator[Part]:
+        loc = SwitchPairHolderFingerLocations()
 
         base_height = 3
         base_len = 18
         index_base_width = 2 * base_len
-        z_dist = SwitchPairHolderCreator.MIDDLE_PART_HEIGHT_AT_CENTER + self._base_holder_distance + base_height / 2
+        z_dist = SwitchPairHolderCreator.MIDDLE_PART_HEIGHT_AT_CENTER + self.BASE_HOLDER_DISTANCE + base_height / 2
 
         yield loc.index * Pos(X=(base_len - index_base_width) / 2, Z=-z_dist) * Box(index_base_width, base_len, base_height)
         yield loc.middle * Pos(Z=-z_dist) * Box(base_len, base_len, base_height)
@@ -115,15 +115,15 @@ class SkeletonCreator2:
         yield loc.pinkie * Pos(Z=-z_dist) * Box(base_len, base_len, base_height)
 
     def _create_sphere(self) -> Part:
-        loc = KeyPairHolderFingerLocations()
+        loc = SwitchPairHolderFingerLocations()
         sphere_radius = 12
-        dz = self._dz + self._tube_outer_radius + sphere_radius + 1
+        dz = self._dz + self.TUBE_OUTER_RADIUS + sphere_radius + 1
         return loc.middle * Pos(Z=-dz) * Sphere(radius=sphere_radius)
 
     def _create_sphere_handle(self) -> Part:
-        loc = KeyPairHolderFingerLocations()
+        loc = SwitchPairHolderFingerLocations()
         handle_radius = 7
-        dz = self._dz + self._tube_outer_radius
+        dz = self._dz + self.TUBE_OUTER_RADIUS
         return loc.middle * Pos(Z=-dz) * Cylinder(radius=handle_radius, height=10)
 
     # def _find_t_in_spline(self, x0: float, spline: Edge) -> float:
