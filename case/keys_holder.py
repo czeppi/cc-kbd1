@@ -5,7 +5,7 @@ from typing import Iterator
 from pathlib import Path
 
 from build123d import mirror, make_face, extrude, loft, export_stl, sweep
-from build123d import Polyline, Plane, Part, Pos, Rot, Box, Location, Compound, Rectangle, Circle, Sketch, BaseSketchObject, Cylinder, Edge, Vector, Face, Sphere
+from build123d import Polyline, Plane, Part, Pos, Rot, Box, Location, Compound, Rectangle, Circle, Sketch, BaseSketchObject, Cylinder, Edge, Vector, Face, Sphere, Solid
 from ocp_vscode import show_object
 from hot_swap_socket import SwitchPairHolderCreator
 
@@ -37,16 +37,18 @@ OUTPUT_DPATH = Path('output')
 
 
 def main():
-    SkeletonSplineFinder().find_path()
+    creator = CaseAssemblyCreator()
+    case_assembly = creator.create()
+    show_object(case_assembly)
     return
 
     creator = FinalAssemblyCreator()
-    assembly = creator.create_with_slots()
+    case_assembly = creator.create_with_slots()
 
     creator.save(OUTPUT_DPATH)   
-    export_stl(assembly, OUTPUT_DPATH / 'assembly.stl')
+    export_stl(case_assembly, OUTPUT_DPATH / 'case_assembly.stl')
 
-    show_object(assembly)
+    show_object(case_assembly)
 
 
 class FinalAssemblyCreator:
@@ -64,17 +66,17 @@ class FinalAssemblyCreator:
 
     def _create_holder_with_slots_map(self) -> Compound:
         holder_without_slots_map = HolderAssemblyCreator().create_map()
-        skeleton_without_slots = SkeletonCreator(tolerance=TOLERANCE, height_offset=-SLOT_LEN).create()
+        skeleton_without_slots = SkeletonCreator1(tolerance=TOLERANCE, height_offset=-SLOT_LEN).create()
         return {name: holder - skeleton_without_slots 
                 for name, holder in holder_without_slots_map.items()}
 
     def _create_skeleton_with_slots(self) -> Part:
         holder_without_slots_map = HolderAssemblyCreator(tolerance=TOLERANCE).create_map()
         holders_without_slots = Compound(label='holders', children=list(holder_without_slots_map.values()))
-        skeleton_without_slots = SkeletonCreator(tolerance=TOLERANCE, height_offset=-SLOT_LEN).create()
+        skeleton_without_slots = SkeletonCreator1(tolerance=TOLERANCE, height_offset=-SLOT_LEN).create()
 
         holders_with_slots = holders_without_slots - skeleton_without_slots
-        return SkeletonCreator().create() - holders_with_slots
+        return SkeletonCreator1().create() - holders_with_slots
     
     def save(self, output_dpath: Path) -> None:
         if self._skeleton:
@@ -84,7 +86,7 @@ class FinalAssemblyCreator:
             export_stl(holder, output_dpath / f'{name}.stl')
 
 
-class SkeletonCreator:
+class SkeletonCreator1:
 
     def __init__(self, tolerance: float = 0.0, height_offset: float = 0.0):
         self._tolerance = tolerance
@@ -461,7 +463,36 @@ class KeyPairHolderSwinger:
         return Rot(X=TILT_ANGLE) * Pos(Y=self._dy)
     
 
-class SkeletonSplineFinder:
+class CaseAssemblyCreator:
+
+    def __init__(self):
+        self._skeleton: Part | None = None
+        self._holders: list[Solid] = None
+
+    def create(self) -> Compound:
+        self._skeleton = SkeletonCreator2().create()
+        children = [self._skeleton] + list(self._iter_switch_holders())
+        return Compound(label="case_assembly", children=children)
+    
+    def _iter_switch_holders(self) -> Iterator[Compound]:
+        loc = KeyPairHolderFingerLocations()
+
+        # y2 = 11.36  # SwitchPairHolderCreator._create_middle_profile_face()#y2
+        # holder = Box(14, 2 * y2, 5)
+        
+        holder_parts = SwitchPairHolderCreator().create()
+
+        yield loc.index * Pos(X=-14) * Compound(label='index2', children=copy.copy(holder_parts))
+        yield loc.index * Compound(label='index', children=copy.copy(holder_parts))
+        yield loc.middle * Compound(label='middle', children=copy.copy(holder_parts))
+        yield loc.ring * Compound(label='ring', children=copy.copy(holder_parts))
+        yield loc.pinkie * Compound(label='pinkie', children=copy.copy(holder_parts))
+
+    def save(self, output_path: Path) -> None:
+        raise NotImplementedError()
+
+
+class SkeletonCreator2:
 
     def __init__(self):
         self._tube_outer_radius = 8
@@ -470,24 +501,18 @@ class SkeletonSplineFinder:
         self._base_offset = 0.5  # make base position a little bit above the tube
         self._dz = SwitchPairHolderCreator.MIDDLE_PART_HEIGHT_AT_CENTER + self._base_holder_distance + self._base_offset + self._tube_outer_radius
 
-    def find_path(self):
+    def create(self) -> Part:
         spline_edge = self._create_spline_edge()
-        #show_object(spline_edge, name='spline')
-
         outer_tube = self._create_tube(r=self._tube_outer_radius, spline_edge=spline_edge)
         inner_tube = self._create_tube(r=self._tube_inner_radius, spline_edge=spline_edge)
+
         key_bases = list(self._iter_key_bases())
         sphere = self._create_sphere()
         sphere_handle = self._create_sphere_handle()
-        sweeped_part = (outer_tube + key_bases + sphere_handle + sphere) - inner_tube
-        show_object(sweeped_part, name='sweeped')
 
-        self._show_switch_holder()
-  
-        #profile_template = Rectangle(16, 8) - Circle(3)
-        #profile_template = Circle(8) + Rectangle(4,12)
-
-        return spline_edge
+        skeleton_with_sphere = (outer_tube + key_bases + sphere_handle + sphere) - inner_tube
+        skeleton_with_sphere.label = 'skeleton'
+        return skeleton_with_sphere
     
     def _create_spline_edge(self) -> Edge:
         loc = KeyPairHolderFingerLocations()
@@ -524,13 +549,13 @@ class SkeletonSplineFinder:
     
     def _iter_key_bases(self) -> Iterator[Part]:
         loc = KeyPairHolderFingerLocations()
-        dz = self._dz
 
         base_height = 3
         base_len = 18
+        index_base_width = 2 * base_len
         z_dist = SwitchPairHolderCreator.MIDDLE_PART_HEIGHT_AT_CENTER + self._base_holder_distance + base_height / 2
 
-        yield loc.index * Pos(Z=-z_dist) * Box(base_len, base_len, base_height)
+        yield loc.index * Pos(X=(base_len - index_base_width) / 2, Z=-z_dist) * Box(index_base_width, base_len, base_height)
         yield loc.middle * Pos(Z=-z_dist) * Box(base_len, base_len, base_height)
         yield loc.ring * Pos(Z=-z_dist) * Box(base_len, base_len, base_height)
         yield loc.pinkie * Pos(Z=-z_dist) * Box(base_len, base_len, base_height)
@@ -547,44 +572,23 @@ class SkeletonSplineFinder:
         dz = self._dz + self._tube_outer_radius
         return loc.middle * Pos(Z=-dz) * Cylinder(radius=handle_radius, height=10)
 
-    def _show_switch_holder(self):
-        loc = KeyPairHolderFingerLocations()
-        y2 = 11.36  # SwitchPairHolderCreator._create_middle_profile_face()#y2
-        
-        holder = Box(14, 2 * y2, 5)
-        holder_parts = SwitchPairHolderCreator().create()
+    # def _find_t_in_spline(self, x0: float, spline: Edge) -> float:
+    #     """ not used in the moment"""
+    #     eps = 1e-3
+    #     t1 = 0.0
+    #     t2 = 1.0
 
-        index2_box = loc.index * Pos(X=-14) * Compound(label='index2', children=copy.copy(holder_parts))
-        show_object(index2_box)
-
-        index_box = loc.index * Compound(label='index', children=copy.copy(holder_parts))
-        show_object(index_box)
-
-        middle_box = loc.middle * Compound(label='middle', children=copy.copy(holder_parts))
-        show_object(middle_box)
-
-        ring_box = loc.ring * Compound(label='ring', children=copy.copy(holder_parts))
-        show_object(ring_box)
-
-        pinkie_box = loc.pinkie * Compound(label='pinkie', children=copy.copy(holder_parts))
-        show_object(pinkie_box)
-    
-    def _find_t_in_spline(self, x0: float, spline: Edge) -> float:
-        eps = 1e-3
-        t1 = 0.0
-        t2 = 1.0
-
-        for i in range(100):
-            t = (t1 + t2) / 2
-            p = spline@t
-            if abs(p.X - x0) < eps:
-                return t
-            if p.X < x0:
-                t2 = t
-            else:
-                t1 = t
-        else: 
-            raise Exception('t not found in spline')
+    #     for i in range(100):
+    #         t = (t1 + t2) / 2
+    #         p = spline@t
+    #         if abs(p.X - x0) < eps:
+    #             return t
+    #         if p.X < x0:
+    #             t2 = t
+    #         else:
+    #             t1 = t
+    #     else: 
+    #         raise Exception('t not found in spline')
 
 
 if __name__ == '__main__':
