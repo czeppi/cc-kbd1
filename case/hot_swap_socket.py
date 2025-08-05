@@ -263,17 +263,20 @@ class SwitchPairHolderCreator(SwitchHolderCreatorBase):
     HOLDER_LEFT_RIGHT_BORDER = 1.0
     HOLDER_FRONT_BORDER = 3.2  # s. finger_parts.py#BACK_BORDER
     HOLDER_BACK_BORDER = 1.0
-    CONN_POINT_DX = 4.5
+    CONN_POINT_DX = 2.5
+    FOOT_HEIGHT = 4
+    FOOT_Y_LEN = 22.7
 
     def create(self, output_dpath: Path|None=None) -> list[Solid]:
         top_part = self.create_top()
         middle_part = self.create_middle_part()
+        foot_part = self.create_foot()
 
         if output_dpath:
             export_stl(top_part, OUTPUT_DPATH / 'switch-pair-holder-top.stl')
             export_stl(middle_part, OUTPUT_DPATH / 'switch-pair-holder-middle.stl')
 
-        return [top_part, middle_part]
+        return [top_part, middle_part, foot_part]
 
     def create_top(self) -> Solid:
         back_part = self._create_top_back_part()
@@ -409,10 +412,10 @@ class SwitchPairHolderCreator(SwitchHolderCreatorBase):
         """
         angle_rad = math.radians(self.TILT_ANGLE)
 
-        r = self.HOLDER_FRONT_BORDER + self._square_hole_len/2 + kailh_choc_v1_data.CENTER_STUB_RADIUS + 4.0
+        r = self.HOLDER_FRONT_BORDER + self._square_hole_len/2 + kailh_choc_v1_data.CENTER_STUB_RADIUS + 4.0  # 4.0: to have enough margin behind the center stub
         y1 = r * math.cos(angle_rad)
         z1 = r * math.sin(angle_rad)
-        y2 = y1 - 4.0
+        y2 = self.FOOT_Y_LEN / 2 # y1 - 4.0
         z23 = -self.MIDDLE_PART_HEIGHT_AT_CENTER
 
         points = [
@@ -453,7 +456,38 @@ class SwitchPairHolderCreator(SwitchHolderCreatorBase):
         return Plane.XY * pos * hole
 
     def create_foot(self) -> Solid:
-        pass
+        x_len = 2 * self.HOLDER_LEFT_RIGHT_BORDER + self._square_hole_len
+        z_offset = self.FOOT_HEIGHT / 2 + self.MIDDLE_PART_HEIGHT_AT_CENTER
+        foot_part = Pos(Z=-z_offset) * Box(x_len, self.FOOT_Y_LEN, self.FOOT_HEIGHT)
+
+        counter_bore_hole = self._create_foot_counter_bore_hole()
+        heat_set_insert_hole = self._create_foot_heat_set_insert_hole()
+        foot_part -= [counter_bore_hole, heat_set_insert_hole]
+
+        foot_part.label = 'foot'
+        return foot_part
+
+    def _create_foot_counter_bore_hole(self) -> Part:
+        m2 = data.FlatHeadScrewM2
+
+        pos = Pos(X=self.CONN_POINT_DX, Z=-self.MIDDLE_PART_HEIGHT_AT_CENTER)
+        hole = CounterBoreHole(radius=m2.RADIUS, 
+                               counter_bore_radius=m2.HEAD_RADIUS, 
+                               counter_bore_depth=m2.HEAD_HEIGHT, 
+                               depth=1000)
+
+        return Plane.XY * pos * hole
+    
+    def _create_foot_heat_set_insert_hole(self) -> Solid:
+        m2 = data.FlatHeadScrewM2
+
+        pos = Pos(X=-self.CONN_POINT_DX, Z=-self.MIDDLE_PART_HEIGHT_AT_CENTER)
+        hole = CounterBoreHole(radius=m2.RADIUS, 
+                               counter_bore_radius=m2.HEAT_SET_INSERT_RADIUS, 
+                               counter_bore_depth=2.0, 
+                               depth=1000)
+        
+        return Plane.XY * pos * hole
 
 
 class SwitchSocketCreator:
