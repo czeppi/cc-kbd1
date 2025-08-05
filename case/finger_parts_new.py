@@ -48,13 +48,16 @@ class CaseAssemblyCreator:
 
 
 class SkeletonCreator:
-    TUBE_OUTER_RADIUS = 8
-    TUBE_INNER_RADIUS = 5
+    TUBE_OUTER_RADIUS = 10
+    TUBE_INNER_RADIUS = 7
     BASE_HOLDER_DISTANCE = 4
-    BASE_OFFSET = 0.5  # make base position a little bit above the tube
+    BASE_LEN = 18
+    BASE_HEIGHT = 3
+    BASE_Z_OFFSET = 0.5  # make base position a little bit above the tube
+    CABLE_HOLE_RADIUS = 3
 
     def __init__(self):
-        self._dz = SwitchPairHolderCreator.MIDDLE_PART_HEIGHT_AT_CENTER + self.BASE_HOLDER_DISTANCE + self.BASE_OFFSET + self.TUBE_OUTER_RADIUS
+        self._dz = SwitchPairHolderCreator.MIDDLE_PART_HEIGHT_AT_CENTER + self.BASE_HOLDER_DISTANCE + self.BASE_Z_OFFSET + self.TUBE_OUTER_RADIUS
 
     def create(self) -> Part:
         spline_edge = self._create_spline_edge()
@@ -64,10 +67,27 @@ class SkeletonCreator:
         switch_bases = list(self._iter_switch_bases())
         sphere = self._create_sphere()
         sphere_handle = self._create_sphere_handle()
+        cable_holes = list(self._iter_cable_holes())
+        neg_parts = [inner_tube] + cable_holes
 
-        skeleton_with_sphere = (outer_tube + switch_bases + sphere_handle + sphere) - inner_tube
+        skeleton_with_sphere = (outer_tube + switch_bases + sphere_handle + sphere) - neg_parts
         skeleton_with_sphere.label = 'skeleton'
         return skeleton_with_sphere
+    
+    def _iter_cable_holes(self) -> Iterator[Part]:
+        loc = SwitchPairHolderFingerLocations()
+
+        hole_radius = self.CABLE_HOLE_RADIUS
+        hole_height = self._dz
+        base_len = self.BASE_LEN
+        x_offset = base_len / 2 + hole_radius
+        z_offset = hole_height / 2
+
+        yield loc.index * Pos(X=-x_offset + 2, Z=-z_offset) * Cylinder(radius=hole_radius, height=hole_height)
+        yield loc.index * Pos(X=x_offset - 1, Y=3, Z=-z_offset) * Cylinder(radius=hole_radius, height=hole_height)
+        yield loc.middle * Pos(X=x_offset, Y=-1, Z=-z_offset) * Cylinder(radius=hole_radius, height=hole_height)
+        yield loc.ring * Pos(X=x_offset, Y=-5, Z=-z_offset) * Cylinder(radius=hole_radius, height=hole_height)
+        #yield loc.pinkie * Pos(X=x_offset, Y=-1, Z=-z_offset) * Cylinder(radius=hole_radius, height=hole_height)
 
     def _create_spline_edge(self) -> Edge:
         loc = SwitchPairHolderFingerLocations()
@@ -105,8 +125,8 @@ class SkeletonCreator:
     def _iter_switch_bases(self) -> Iterator[Part]:
         loc = SwitchPairHolderFingerLocations()
 
-        base_height = 3
-        base_len = 18
+        base_height = self.BASE_HEIGHT
+        base_len = self.BASE_LEN
         index_base_width = 2 * base_len
         z_dist = SwitchPairHolderCreator.MIDDLE_PART_HEIGHT_AT_CENTER + self.BASE_HOLDER_DISTANCE + base_height / 2
 
