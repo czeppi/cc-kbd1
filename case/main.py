@@ -1,5 +1,5 @@
 from finger_parts import SkeletonCreator2
-from hot_swap_socket import SwitchPairHolderCreator
+from case.finger_parts_new import SwitchPairHolderCreator
 from ocp_vscode import show_object
 from base import OUTPUT_DPATH
 
