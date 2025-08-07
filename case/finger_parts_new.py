@@ -124,6 +124,7 @@ class SingleSwitchHolderCreator(SwitchHolderCreatorBase):  # for index finger
     HOLDER_FRONT_BACK_BORDER = 1.0
     TILT_ANGLE = 25
     FOOT_RIGHT_HEIGHT = 4  # on the right side (smallest height)
+    X_OFFSET = -20  # from index location
 
     def _iter_top_foot_conn_points(self) -> Iterator[XY]:
         """ before Rot(Z=90)
@@ -133,17 +134,11 @@ class SingleSwitchHolderCreator(SwitchHolderCreatorBase):  # for index finger
         yield -x, 0
         yield x, 0
 
-    def _iter_middle_foot_conn_points(self) -> Iterator[XY]:
-        """ before Rot(Z=90)
-        """
-        m2 = data.FlatHeadScrewM2
-        m2.HEAD_RADIUS
-        yield 0, m2.HEAD_RADIUS + kailh_choc_v1_data.CENTER_STUB_RADIUS
-
-    def _iter_foot_base_conn_points(self) -> Iterator[XY]:
+    @staticmethod
+    def iter_foot_base_conn_points() -> Iterator[XY]:
         """ after Rot(Z=90)
         """
-        yield 1, 0
+        yield 0, 0
 
     def create(self, output_dpath: Path|None=None) -> Compound:
         """ - create top + middle part with top faces parallel to xy plane
@@ -178,7 +173,7 @@ class SingleSwitchHolderCreator(SwitchHolderCreatorBase):  # for index finger
         z_offset = r * math.sin(angle_rad) - self.MIDDLE_PART_HEIGHT_AT_CENTER
 
         parts = [top_part2, middle_part2, foot_part]
-        return Pos(X=-20, Z=z_offset) * Compound(label='index2', children=parts)
+        return Pos(X=self.X_OFFSET, Z=z_offset) * Compound(label='index2', children=parts)
 
     def _create_top(self) -> Solid:
         """ 
@@ -232,25 +227,17 @@ class SingleSwitchHolderCreator(SwitchHolderCreatorBase):  # for index finger
         hot_swap_socket = Pos(X=x_off, Y=y_off, Z=z_off) * HotSwapSocketCreator3().create()
 
         switch_holes = [hole for hole in self._iter_switch_holes()]
-
-        counter_bore_holes = list(self._iter_middle_counter_bore_holes())
-        heat_set_insert_holes = list(self._iter_middle_heat_set_insert_holes())
-        neg_parts = [hot_swap_socket] + counter_bore_holes + heat_set_insert_holes + switch_holes
+        screw_holes = list(self._iter_middle_screw_holes())
+        neg_parts = [hot_swap_socket] + screw_holes + switch_holes
 
         middle_part = body - neg_parts
         middle_part.label = 'middle'
         return middle_part
 
-    def _iter_middle_counter_bore_holes(self) -> Iterator[Part]:
-        for x, y in self._iter_middle_foot_conn_points():
-            pos = Pos(X=x, Y=y)
-            hole = self._create_counter_bore_hole()
-            yield Plane.XY * pos * hole
-    
-    def _iter_middle_heat_set_insert_holes(self) -> Iterator[Solid]:
+    def _iter_middle_screw_holes(self) -> Iterator[Solid]:
         for x, y in self._iter_top_foot_conn_points():
             pos = Pos(X=x, Y=y)
-            hole = self.create_heat_set_insert_hole()
+            hole = self._create_hole()
             yield Plane.XY * pos * hole
 
     def _create_foot(self) -> Solid:
@@ -301,7 +288,7 @@ class SingleSwitchHolderCreator(SwitchHolderCreatorBase):  # for index finger
     def _iter_foot_heat_set_insert_holes(self) -> Iterator[Solid]:
         """ top face is parallel in xy plane (but already Rot(Z=90))
         """
-        for x, y in self._iter_middle_foot_conn_points():
+        for x, y in self._iter_top_foot_conn_points():
             pos = Rot(Z=90) * Pos(X=x, Y=y)
             hole = self.create_heat_set_insert_hole()
             yield Plane.XY * pos * hole
@@ -313,7 +300,7 @@ class SingleSwitchHolderCreator(SwitchHolderCreatorBase):  # for index finger
         angle_rad = math.radians(self.TILT_ANGLE)
         extra_depth = m2.HEAD_RADIUS * math.tan(angle_rad)
 
-        for x, y in self._iter_foot_base_conn_points():
+        for x, y in self.iter_foot_base_conn_points():
             z = -(x * math.tan(angle_rad))
             pos = Pos(X=x, Y=y, Z=z)
             hole = self._create_counter_bore_hole(extra_depth=extra_depth)
@@ -429,7 +416,7 @@ class SwitchPairHolderCreator(SwitchHolderCreatorBase):
         back_part = self._create_middle_back_part()
         front_part = Rot(Z=180) * copy.copy(back_part)
         middle_part = back_part + front_part
-        middle_part -= list(self._iter_middle_part_holes())
+        middle_part -= list(self._iter_middle_screw_holes())
 
         middle_part.label = 'middle'
         return middle_part
@@ -490,7 +477,7 @@ class SwitchPairHolderCreator(SwitchHolderCreatorBase):
         back_half = Polyline(points)
         return make_face(Plane.YZ * back_half)
 
-    def _iter_middle_part_holes(self) -> Iterator[Solid]:
+    def _iter_middle_screw_holes(self) -> Iterator[Solid]:
         m2 = data.FlatHeadScrewM2
         angle_rad = math.radians(self.TILT_ANGLE)
         h_offset =  math.tan(angle_rad) * m2.HEAT_SET_INSERT_RADIUS
@@ -607,7 +594,7 @@ class SkeletonCreator:
 
         base_height = self.BASE_HEIGHT
         base_len = self.BASE_LEN
-        index_base_width = 2 * base_len
+        index_base_width = 2 * base_len + 1
         z_dist = SwitchPairHolderCreator.MIDDLE_PART_HEIGHT_AT_CENTER \
                  + SwitchPairHolderCreator.FOOT_HEIGHT \
                  + base_height / 2
@@ -632,6 +619,10 @@ class SkeletonCreator:
         for holder_loc in [loc.index, loc.middle, loc.ring, loc.pinkie]:
             for x, y in SwitchPairHolderCreator.iter_foot_base_conn_points():
                 yield holder_loc * Pos(X=x, Y=y, Z=-z_dist) * SwitchHolderCreatorBase.create_heat_set_insert_hole()
+
+        index2_loc = loc.index * Pos(X=SingleSwitchHolderCreator.X_OFFSET)
+        for x, y in SingleSwitchHolderCreator.iter_foot_base_conn_points():
+            yield index2_loc * Pos(X=x, Y=y, Z=-z_dist) * SwitchHolderCreatorBase.create_heat_set_insert_hole()
 
     def _create_sphere(self) -> Part:
         loc = SwitchPairHolderFingerLocations()
