@@ -82,7 +82,8 @@ class SwitchHolderCreatorBase:
         yield Pos(Z=z_off, X=-data.OUTER_STUB_CX) * Cylinder(radius=data.OUTER_STUB_RADIUS + tol, height=height)
         yield Pos(Z=z_off, X=data.OUTER_STUB_CX) * Cylinder(radius=data.OUTER_STUB_RADIUS + tol, height=height)
 
-    def _iter_hot_swap_socket_studs(self) -> Iterator[Solid]:
+    @staticmethod
+    def _iter_hot_swap_socket_studs() -> Iterator[Solid]:
         data = hot_swap_socket_data
         h = data.STUDS_HEIGHT
         r = data.STUDS_RADIUS
@@ -96,20 +97,25 @@ class SwitchHolderCreatorBase:
         yield Pos(X=x0 - dx, Y=y0 + dy) * copy.copy(cyl)
         yield Pos(X=x0 + dx, Y=y0 - dy) * copy.copy(cyl)
 
-    def _create_counter_bore_hole(self, extra_depth: float = 0.0) -> Part:
+    @staticmethod
+    def _create_counter_bore_hole(extra_depth: float = 0.0) -> Part:
         m2 = data.FlatHeadScrewM2
+        counter_bore_depth = m2.HEAD_HEIGHT + extra_depth
 
         return CounterBoreHole(radius=m2.RADIUS,
                                counter_bore_radius=m2.HEAD_RADIUS,
-                               counter_bore_depth=m2.HEAD_HEIGHT + extra_depth,
-                               depth=1000)
+                               counter_bore_depth=counter_bore_depth,
+                               depth=counter_bore_depth + 10)
 
-    def _create_heat_set_insert_hole(self, extra_depth: float = 0.0) -> Part:
+    @staticmethod
+    def create_heat_set_insert_hole(extra_depth: float = 0.0) -> Part:
         m2 = data.FlatHeadScrewM2
+        counter_bore_depth = 2.0 + extra_depth
+
         return CounterBoreHole(radius=m2.RADIUS,
                                counter_bore_radius=m2.HEAT_SET_INSERT_RADIUS,
-                               counter_bore_depth=2.0 + extra_depth,
-                               depth=1000)
+                               counter_bore_depth=counter_bore_depth,
+                               depth=counter_bore_depth + 10)
     
 class SingleSwitchHolderCreator(SwitchHolderCreatorBase):  # for index finger
     HOLDER_LEFT_RIGHT_BORDER = 6.0  # for screws
@@ -242,7 +248,7 @@ class SingleSwitchHolderCreator(SwitchHolderCreatorBase):  # for index finger
     def _iter_middle_heat_set_insert_holes(self) -> Iterator[Solid]:
         for x, y in self._iter_top_middle_conn_points():
             pos = Pos(X=x, Y=y)
-            hole = self._create_heat_set_insert_hole()
+            hole = self.create_heat_set_insert_hole()
             yield Plane.XY * pos * hole
 
     def _create_foot(self) -> Solid:
@@ -279,7 +285,6 @@ class SingleSwitchHolderCreator(SwitchHolderCreatorBase):  # for index finger
         x12 = -x03
         z1 = r * math.sin(angle_rad)
         z0 = -z1
-        print(f'z0={z0}')
         z23 = z0 - self.FOOT_RIGHT_HEIGHT
 
         points = [
@@ -296,7 +301,7 @@ class SingleSwitchHolderCreator(SwitchHolderCreatorBase):  # for index finger
         """
         for x, y in self._iter_middle_foot_conn_points():
             pos = Rot(Z=90) * Pos(X=x, Y=y)
-            hole = self._create_heat_set_insert_hole()
+            hole = self.create_heat_set_insert_hole()
             yield Plane.XY * pos * hole
 
     def _iter_foot_counter_bore_holes(self) -> Iterator[Part]:
@@ -327,7 +332,8 @@ class SwitchPairHolderCreator(SwitchHolderCreatorBase):
     def _iter_middle_foot_conn_points(self) -> Iterator[XY]:
         yield -2.5, 0
 
-    def _iter_foot_base_conn_points(self) -> Iterator[XY]:
+    @staticmethod
+    def iter_foot_base_conn_points() -> Iterator[XY]:
         yield 2.5, 0
 
     def create(self, output_dpath: Path|None=None) -> list[Solid]:
@@ -493,7 +499,7 @@ class SwitchPairHolderCreator(SwitchHolderCreatorBase):
 
         for x, y in self._iter_top_middle_conn_points():
             pos = Pos(X=x, Y=y, Z=h_offset)
-            hole = self._create_heat_set_insert_hole(extra_depth=h_offset)
+            hole = self.create_heat_set_insert_hole(extra_depth=h_offset)
             yield Plane.XY * pos * hole
 
     def _iter_middle_counter_bore_holes(self) -> Iterator[Part]:
@@ -522,11 +528,11 @@ class SwitchPairHolderCreator(SwitchHolderCreatorBase):
     def _iter_foot_heat_set_insert_holes(self) -> Iterator[Solid]:
         for x, y in self._iter_middle_foot_conn_points():
             pos = Pos(X=x, Y=y, Z=-self.MIDDLE_PART_HEIGHT_AT_CENTER)
-            hole = self._create_heat_set_insert_hole()
+            hole = self.create_heat_set_insert_hole()
             yield Plane.XY * pos * hole
 
     def _iter_foot_counter_bore_holes(self) -> Iterator[Part]:
-        for x, y in self._iter_foot_base_conn_points():
+        for x, y in self.iter_foot_base_conn_points():
             pos = Pos(X=x, Y=y, Z=-self.MIDDLE_PART_HEIGHT_AT_CENTER)
             hole = self._create_counter_bore_hole()
             yield Plane.XY * pos * hole
@@ -535,14 +541,15 @@ class SwitchPairHolderCreator(SwitchHolderCreatorBase):
 class SkeletonCreator:
     TUBE_OUTER_RADIUS = 10
     TUBE_INNER_RADIUS = 7
-    BASE_HOLDER_DISTANCE = 4
     BASE_LEN = 18
     BASE_HEIGHT = 3
     BASE_Z_OFFSET = 0.5  # make base position a little bit above the tube
     CABLE_HOLE_RADIUS = 3
 
     def __init__(self):
-        self._dz = SwitchPairHolderCreator.MIDDLE_PART_HEIGHT_AT_CENTER + self.BASE_HOLDER_DISTANCE + self.BASE_Z_OFFSET + self.TUBE_OUTER_RADIUS
+        self._dz = SwitchPairHolderCreator.MIDDLE_PART_HEIGHT_AT_CENTER \
+                   + SwitchPairHolderCreator.FOOT_HEIGHT \
+                   + self.BASE_Z_OFFSET + self.TUBE_OUTER_RADIUS
 
     def create(self) -> Part:
         spline_edge = self._create_spline_edge()
@@ -553,7 +560,8 @@ class SkeletonCreator:
         sphere = self._create_sphere()
         sphere_handle = self._create_sphere_handle()
         cable_holes = list(self._iter_cable_holes())
-        neg_parts = [inner_tube] + cable_holes
+        heat_set_insert_holes = list(self._iter_heat_set_insert_holes())
+        neg_parts = [inner_tube] + cable_holes + heat_set_insert_holes
 
         skeleton_with_sphere = (outer_tube + switch_bases + sphere_handle + sphere) - neg_parts
         skeleton_with_sphere.label = 'skeleton'
@@ -613,12 +621,29 @@ class SkeletonCreator:
         base_height = self.BASE_HEIGHT
         base_len = self.BASE_LEN
         index_base_width = 2 * base_len
-        z_dist = SwitchPairHolderCreator.MIDDLE_PART_HEIGHT_AT_CENTER + self.BASE_HOLDER_DISTANCE + base_height / 2
+        z_dist = SwitchPairHolderCreator.MIDDLE_PART_HEIGHT_AT_CENTER \
+                 + SwitchPairHolderCreator.FOOT_HEIGHT \
+                 + base_height / 2
+        
+        pair_holder_heat_set_insert_holes = [
+            Pos(X=x, Y=y, Z=base_height/2) * SwitchHolderCreatorBase._create_counter_bore_hole()
+            for x, y in SwitchPairHolderCreator.iter_foot_base_conn_points()]
 
-        yield loc.index * Pos(X=(base_len - index_base_width) / 2, Z=-z_dist) * Box(index_base_width, base_len, base_height)
-        yield loc.middle * Pos(Z=-z_dist) * Box(base_len, base_len, base_height)
+        big_box = Box(index_base_width, base_len, base_height)
+        small_box = Box(base_len, base_len, base_height) - pair_holder_heat_set_insert_holes
+
+        yield loc.index * Pos(X=(base_len - index_base_width) / 2, Z=-z_dist) * big_box
+        yield loc.middle * Pos(Z=-z_dist) * copy.copy(small_box)
         yield loc.ring * Pos(Z=-z_dist) * Box(base_len, base_len, base_height)
         yield loc.pinkie * Pos(Z=-z_dist) * Box(base_len, base_len, base_height)
+
+    def _iter_heat_set_insert_holes(self):
+        loc = SwitchPairHolderFingerLocations()
+        z_dist = SwitchPairHolderCreator.MIDDLE_PART_HEIGHT_AT_CENTER \
+                 + SwitchPairHolderCreator.FOOT_HEIGHT
+
+        for x, y in SwitchPairHolderCreator.iter_foot_base_conn_points():
+            yield loc.ring * Pos(X=x, Y=y, Z=-z_dist) * SwitchHolderCreatorBase.create_heat_set_insert_hole()
 
     def _create_sphere(self) -> Part:
         loc = SwitchPairHolderFingerLocations()
