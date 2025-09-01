@@ -73,7 +73,7 @@ def create_index_trio() -> Part:
     big_box = big_cap.bounding_box()
 
     pair_holder_back_border = 3.2  # s. keys_holder.BACK_BORDER
-    cut_width = 13.9  # s. keys_holder.CUT_WIDTH
+    cut_width = 13.9  # s. finger_parts.CUT_WIDTH
     cap_height = 4.8  # the height of the cap-bottom
 
     x = -concave_box.min.X

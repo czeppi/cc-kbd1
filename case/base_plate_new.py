@@ -12,10 +12,23 @@ from build123d import Box, Circle, Compound, CounterBoreHole, Hole, Cylinder, Ed
 from ocp_vscode import show_object
 
 
+WRITE_ENABLED = True
+
+
 type XY = tuple[float, float]
 
 
 def main():
+    #_create_assembly()
+    _create_finger_sphere()
+
+
+def _create_finger_sphere():
+    part = FingerSphereCreator().create()
+    show_object(part)
+
+
+def _create_assembly():
     creator = BaseAssemblyCreator()
     assembly = creator.create()
     show_object(assembly)
@@ -196,6 +209,35 @@ class HalfPipeCreator:
         r = self.MOUNTING_POST_RADIUS
         return Pos(Z=h/2) * Cylinder(radius=r, height=h)
 
+
+class FingerSphereCreator:
+    SPHERE_RADIUS = 12
+    CYLINDER_RADIUS = 7
+    CYLINDER_EXTRA_HEIGHT = 5  # len beyond sphere
+    SCREW = data.FLAT_HEAD_SCREW_M5
+    HEAT_INSERTER_HEIGHT = 12
+    HOLE_EXTRA_DEPTH = 5
+
+    def create(self) -> Part:
+        sphere_dz = self.SPHERE_RADIUS + self.CYLINDER_EXTRA_HEIGHT
+        sphere = Pos(Z=sphere_dz) * Sphere(self.SPHERE_RADIUS)
+
+        cyl_height = self.SPHERE_RADIUS + self.CYLINDER_EXTRA_HEIGHT
+        cylinder = Pos(Z=cyl_height / 2) * Cylinder(radius=self.CYLINDER_RADIUS, height=cyl_height)
+
+        hole_deep = self.HEAT_INSERTER_HEIGHT + self.HOLE_EXTRA_DEPTH
+        hole = Rot(X=180) * CounterBoreHole(radius=self.SCREW.hole_radius,
+                                            counter_bore_radius=self.SCREW.head_set_insert_radius,
+                                            counter_bore_depth=self.HEAT_INSERTER_HEIGHT,
+                                            depth=hole_deep)
+        
+        part = sphere + cylinder - hole  # - Pos(X=50) * Box(100, 100, 100)
+
+        if WRITE_ENABLED:
+            export_stl(part, OUTPUT_DPATH / 'finger-base-sphere.stl')
+
+        return part
+    
 
 if __name__ == '__main__':
     main()
