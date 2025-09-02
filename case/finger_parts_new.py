@@ -141,7 +141,7 @@ class SingleSwitchHolderCreator(SwitchHolderCreatorBase):  # for index finger
     TILT_ANGLE = 25
     FOOT_RIGHT_HEIGHT = 4  # on the right side (smallest height)
     X_OFFSET = -20  # from index location
-    CORRECTIONS = SwitchHolderCorrection(dz=4, dx=-1)
+    CORRECTIONS = SwitchHolderCorrection(dz=3, dx=-3)
 
     def _iter_top_foot_conn_points(self) -> Iterator[XY]:
         """ before Rot(Z=90)

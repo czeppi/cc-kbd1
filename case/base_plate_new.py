@@ -2,6 +2,7 @@ import sys
 import math
 from pathlib import Path
 from typing import Iterator
+import copy
 
 sys.path.append(str(Path(__file__).absolute().parent.parent))
 
@@ -20,15 +21,21 @@ type XY = tuple[float, float]
 
 def main():
     #_create_assembly()
-    _create_finger_sphere()
+    #_create_finger_sphere()
+    _create_circle_base_plate()
 
 
-def _create_finger_sphere():
+def _create_circle_base_plate() -> Part:
+    part = CircleBasePlateCreator().create()
+    show_object(part)
+
+
+def _create_finger_sphere() -> Part:
     part = FingerSphereCreator().create()
     show_object(part)
 
 
-def _create_assembly():
+def _create_assembly() -> Compound:
     creator = BaseAssemblyCreator()
     assembly = creator.create()
     show_object(assembly)
@@ -42,7 +49,7 @@ class BaseAssemblyCreator:
         self._half_pipes: list[Part] = []
 
     def create(self) -> Compound:
-        self._base_plate = BasePlateCreator().create()
+        self._base_plate = PentagonBasePlateCreator().create()
         self._stumps = list(self._iter_stumps())
         self._half_pipes = list(self._iter_half_pipes())
         
@@ -50,9 +57,9 @@ class BaseAssemblyCreator:
         return Compound(label="base_assembly", children=children)
     
     def _iter_stumps(self) -> Iterator[Part]:
-        x1, y1 = BasePlateCreator.FINGER_SLOT_POSITION
-        x2, y2 = BasePlateCreator.THUMB_SLOT_POSITION
-        z = BasePlateCreator.THICKNESS + BasePlateCreator.SCREW_HEAD_HEIGHT
+        x1, y1 = PentagonBasePlateCreator.FINGER_SLOT_POSITION
+        x2, y2 = PentagonBasePlateCreator.THUMB_SLOT_POSITION
+        z = PentagonBasePlateCreator.THICKNESS + PentagonBasePlateCreator.SCREW_HEAD_HEIGHT
 
         mounting_post1 = Pos(X=x1, Y=y1, Z=z) * MountingPostCreator().create()
         mounting_post2 = Pos(X=x2, Y=y2, Z=z) * MountingPostCreator().create()
@@ -64,9 +71,9 @@ class BaseAssemblyCreator:
         yield mounting_post2
 
     def _iter_half_pipes(self) -> Iterator[Part]:
-        x1, y1 = BasePlateCreator.FINGER_SLOT_POSITION
-        x2, y2 = BasePlateCreator.THUMB_SLOT_POSITION
-        z = BasePlateCreator.THICKNESS + BasePlateCreator.SCREW_HEAD_HEIGHT + 10
+        x1, y1 = PentagonBasePlateCreator.FINGER_SLOT_POSITION
+        x2, y2 = PentagonBasePlateCreator.THUMB_SLOT_POSITION
+        z = PentagonBasePlateCreator.THICKNESS + PentagonBasePlateCreator.SCREW_HEAD_HEIGHT + 10
 
         creator = HalfPipeCreator()
         half_pipe_1a = Pos(X=x1, Y=y1, Z=z) * creator.create_with_counter_hole()
@@ -85,7 +92,87 @@ class BaseAssemblyCreator:
         yield half_pipe_2b
 
 
-class BasePlateCreator:
+class CircleBasePlateCreator:
+    RADIUS = 50
+    REL_HEIGHT = 0.75
+    THICKNESS = 6
+    RIM_HEIGHT = 5
+    RIM_WIDTH = 4
+    SCREW = data.FLAT_HEAD_SCREW_M5
+    FINGER_WASHER_RADIUS = 12
+    THUMB_SLOT_LEN = 50
+    THUMB_WASHER_RADIUS = 10  # for distance to rim
+    SLOT_DIST = 5
+
+    #dx 25
+    #dy 40
+
+    def create(self) -> Part:
+        """ origin: z=0 => bottom of plate
+        """
+        body = self._create_body_with_rim()
+        slots = list(self._iter_slots())
+        part = body - slots
+
+        if WRITE_ENABLED:
+            export_stl(part, OUTPUT_DPATH / 'circle-base-plate.stl')
+
+        return part
+    
+    def _create_body_with_rim(self) -> Part:
+        body = self._create_cut_circle(r=self.RADIUS, h=self.THICKNESS + self.RIM_HEIGHT)
+        neg_part = self._create_cut_circle(r=self.RADIUS - self.RIM_WIDTH, h=self.RIM_HEIGHT)
+        return body - neg_part
+
+    def _create_cut_circle(self, r: float, h: float) -> Part:
+        cyl = Pos(Z=h / 2) * Cylinder(radius=r, height=h)
+
+        a = 2 * r
+        dy = self.REL_HEIGHT * r
+        neg_box = Pos(Y=-a/2 - dy) * Box(a, a, a)
+        return cyl - neg_box
+
+    def _iter_slots(self) -> Iterator[Part]:
+        yield self._create_thumb_slot()
+        yield from self._create_finger_slots()
+    
+    def _create_thumb_slot(self) -> Part:
+        y0 = self._calc_thumb_slot_y()
+        return Pos(Y=y0) * self._create_slot(slot_len=self.THUMB_SLOT_LEN)
+    
+    def _calc_thumb_slot_y(self) -> float:
+        return -self.REL_HEIGHT * self.RADIUS + self.RIM_WIDTH + self.THUMB_WASHER_RADIUS
+    
+    def _create_finger_slots(self) -> Iterator[Part]:
+        dx = self.SLOT_DIST + 2 * self.SCREW.hole_radius
+        yield self._create_finger_slot(-2 * dx)
+        yield self._create_finger_slot(-dx)
+        yield self._create_finger_slot(0)
+        yield self._create_finger_slot(dx)
+        yield self._create_finger_slot(2 * dx)
+
+    def _create_finger_slot(self, x0: float) -> Part:
+        y_thumb_slot = self._calc_thumb_slot_y()
+        y_min = y_thumb_slot + 2 * self.SCREW.hole_radius + self.SLOT_DIST + 5
+
+        r = self.RADIUS - self.RIM_WIDTH - self.FINGER_WASHER_RADIUS
+        y_max = math.sqrt(r**2 - x0**2)
+
+        slot_len = y_max - y_min
+        y0 = (y_min + y_max) / 2
+        slot = self._create_slot(slot_len=slot_len)
+        return Pos(X=x0, Y=y0) * Rot(Z=90) * slot
+
+    def _create_slot(self, slot_len: float) -> Part:  # in x direction
+        h = 100  # a big value
+        cyl = Cylinder(radius=self.SCREW.hole_radius, height=h)
+        cyl_left = Pos(X=-slot_len / 2) * copy.copy(cyl)
+        cyl_right = Pos(X=slot_len / 2) * copy.copy(cyl)
+        box = Box(slot_len, 2 * self.SCREW.hole_radius, h)
+        return cyl_left + box + cyl_right
+
+
+class PentagonBasePlateCreator:
     THICKNESS = 4
     SLOTS_LEN = 25
     SLOTS_WIDTH = 5 
