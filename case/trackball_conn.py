@@ -4,7 +4,7 @@ from build123d import Box, Part, Pos
 from ocp_vscode import show_object
 
 from base import TOLERANCE, OUTPUT_DPATH
-from trackball_holder import TrackballHolderCreator
+from case.trackball_holder_old import TrackballHolderCreator
 from thumb_holder import ThumbMiddlePartCreator
 from thumb_base import THICKNESS, SLOT_LEN
 
