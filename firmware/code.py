@@ -2,29 +2,31 @@ import time
 import board
 import PMW3389
 
-from digitalio import DigitalInOut, Direction
+from digitalio import DigitalInOut, Direction, Pull
 import usb_hid
 from adafruit_hid.keyboard import Keyboard
 from adafruit_hid.keycode import Keycode
 from adafruit_hid.mouse import Mouse
 
-# Set up a keyboard device.
-#kbd = Keyboard(usb_hid.devices)
-
-# Type lowercase 'a'. Presses the 'a' key and releases it.
-#kbd.send(Keycode.A)  # OK
+# Set up a keyboard and mouse device.
+kbd = Keyboard(usb_hid.devices)
 mouse = Mouse(usb_hid.devices)
 
 # board.CLK may be board.SCK depending on the board
 # board.D10 is the cs pin
-#sensor = PMW3360.PMW3360(board.CLK, board.MOSI, board.MISO, board.D10)
 sensor = PMW3389.PMW3389(sck=board.GP6, mosi=board.GP7, miso=board.GP4, cs=board.GP22)
-# vin miso mosi sck ss mt gnd rst
-#      4    7    6  22
 
 # Any pin. Goes LOW if motion is detected. More reliable.
 mt_pin = DigitalInOut(board.A0)
 mt_pin.direction = Direction.INPUT
+
+button_thumb_down = DigitalInOut(board.GP16)
+button_thumb_down.direction = Direction.INPUT
+button_thumb_down.pull = Pull.UP
+
+button_thumb_up = DigitalInOut(board.GP17)
+button_thumb_up.direction = Direction.INPUT
+button_thumb_up.pull = Pull.UP
 
 # Initialize sensor. You can specify CPI as an argument. Default CPI is 800.
 if sensor.begin():
@@ -56,6 +58,9 @@ def delta(value):
     return (value & 0x7FFF)
 
 
+button_thumb_down_old_value = button_thumb_down.value
+
+
 while True:
     data = sensor.read_burst()
     dx = delta(data["dx"])
@@ -75,5 +80,10 @@ while True:
     if cpi != target_cpi:
         print(f'cpi = {cpi}')
         sensor.set_CPI(target_cpi)
+        
+    if button_thumb_down.value != button_thumb_down_old_value:
+        if button_thumb_down.value:  # pressed (HI)
+            kbd.send(Keycode.A)  # Type lowercase 'a'. Presses the 'a' key and releases it.
+        button_thumb_down_old_value = button_thumb_down.value
 
     time.sleep(0.01)  # from ChatGPT
