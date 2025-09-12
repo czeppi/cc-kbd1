@@ -4,7 +4,7 @@ from build123d import Box, Part, Pos, Axis
 from ocp_vscode import show_object
 
 from base import TOLERANCE, OUTPUT_DPATH
-from thumb_holder import ThumbMiddlePartCreator
+from case.thumb_holder_old import ThumbMiddlePartCreator
 from thumb_base import THICKNESS, SLOT_LEN
 from finger_parts_old import SwitchPairHolderCreator
 

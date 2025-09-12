@@ -12,7 +12,7 @@ from case.hot_swap_socket import HotSwapSocketCreator3, hot_swap_socket_data, ka
 from finger_parts_common import LEFT_RIGHT_BORDER, CUT_WIDTH, SwitchPairHolderFingerLocations
 import data
 
-from build123d import Box, Circle, Compound, CounterBoreHole, Hole, Cylinder, Edge, Part, Plane, Polyline, Pos, Rot, Sketch, Solid, Sphere, Vector, export_stl, extrude, make_face, sweep
+from build123d import Box, Circle, Compound, CounterBoreHole, Hole, Cylinder, Edge, Part, Plane, Polyline, Pos, Rot, Location, Sketch, Solid, Sphere, Vector, export_stl, extrude, make_face, sweep
 from ocp_vscode import show_object
 
 
@@ -459,10 +459,9 @@ class SwitchPairHolderCreator(SwitchHolderCreatorBase):
         top_height = self._square_hole_height + hot_swap_socket_data.STUDS_HEIGHT
         y_off0 = self._square_hole_len/2 + self.HOLDER_FRONT_BORDER + top_height * math.tan(angle_rad)
 
-        x_off = hot_swap_socket_data.X_OFFSET
-        y_off = hot_swap_socket_data.Y_OFFSET + y_off0
         z_off = hot_swap_socket_data.STUDS_HEIGHT
-        hot_swap_socket = Rot(X=self.TILT_ANGLE) * Pos(X=x_off, Y=y_off, Z=z_off) * HotSwapSocketCreator3().create()
+        rel_socket_loc = self._create_hot_swap_socket_location_rel_to_switch_center()
+        hot_swap_socket = Rot(X=self.TILT_ANGLE) * Pos(Y=y_off0, Z=z_off) * rel_socket_loc * HotSwapSocketCreator3().create()
         #hot_swap_socket_box = hot_swap_socket.bounding_box()
 
         holes = [Rot(X=self.TILT_ANGLE) * Pos(Y=y_off0) * hole
@@ -474,6 +473,11 @@ class SwitchPairHolderCreator(SwitchHolderCreatorBase):
 
         neg_parts = [hot_swap_socket, cabel_slot] + holes
         return body - neg_parts
+    
+    def _create_hot_swap_socket_location_rel_to_switch_center(self) -> Location:
+        x_off = hot_swap_socket_data.X_OFFSET
+        y_off = hot_swap_socket_data.Y_OFFSET
+        return Pos(X=x_off, Y=y_off)
 
     def _create_middle_body(self) -> Solid:
         face = self._create_middle_profile_face()

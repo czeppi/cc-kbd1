@@ -14,8 +14,8 @@ WRITE_ENABLED = True
 
 
 def main():
-    part = MountingPostCreator().create()
-    #part = HalfPipeCreator().create()
+    #part = MountingPostCreator().create()
+    part = HalfPipeCreator().create()
     show_object(part)
 
 
@@ -54,13 +54,13 @@ class MountingPostCreator:
     
 
 class HalfPipeCreator:
-    SPHERE_RADIUS = 9.0  # add some tolerance
+    SPHERE_RADIUS = 10.0
     SPHERE_COMPLETENESS = 0.75
-    SCREW = data.FLAT_HEAD_SCREW_M5
+    SCREW = data.FLAT_HEAD_SCREW_M6
     THICKNESS = 3
-    GAP = 1.0  # between sphere and screw
-    EXTRA_SPACE = 1.0  # cut a litte more than a half for better tension
-    TOLERANCE = 1.0  # make sphere + cylinder a litte bigger
+    SPHERE_CYLINDER_GAP = 1.0  # between sphere and screw
+    HALF_PIPES_GAP = 1.0  # cut a litte more than a half for better tension
+    TOLERANCE = 0.1  # make sphere + cylinder a litte bigger
 
     @property
     def _body_radius(self) -> float:
@@ -73,7 +73,7 @@ class HalfPipeCreator:
         mounting_post = self._create_mounting_post_cylinder()
         screw_node = self._create_screw_nose()
         screw_hole = self._create_screw_hole()
-        neg_half_box = Pos(X=-100 + self.EXTRA_SPACE) * Box(200, 200, 200)
+        neg_half_box = Pos(X=-100 + self.HALF_PIPES_GAP) * Box(200, 200, 200)
         part = body + screw_node - sphere - mounting_post - screw_hole - neg_half_box
 
         if WRITE_ENABLED:
@@ -82,12 +82,12 @@ class HalfPipeCreator:
 
     def _create_body(self) -> Part:
         sphere_radius = self.SPHERE_RADIUS + self.TOLERANCE
-        h = MountingPostCreator.HEIGHT + self.GAP + 2 * sphere_radius * self.SPHERE_COMPLETENESS
+        h = MountingPostCreator.HEIGHT + self.SPHERE_CYLINDER_GAP + 2 * sphere_radius * self.SPHERE_COMPLETENESS
         return Pos(Z=h/2) * Cylinder(radius=self._body_radius, height=h)
     
     def _create_sphere(self) -> Part:
         sphere_radius = self.SPHERE_RADIUS + self.TOLERANCE
-        dz = MountingPostCreator.HEIGHT + self.GAP + sphere_radius
+        dz = MountingPostCreator.HEIGHT + self.SPHERE_CYLINDER_GAP + sphere_radius
         return Pos(Z=dz) * Sphere(sphere_radius)
     
     def _create_mounting_post_cylinder(self) -> Part:

@@ -5,7 +5,7 @@ from ocp_vscode import show_object
 
 from base import TOLERANCE, OUTPUT_DPATH
 from case.trackball_holder_old import TrackballHolderCreator
-from thumb_holder import ThumbMiddlePartCreator
+from case.thumb_holder_old import ThumbMiddlePartCreator
 from thumb_base import THICKNESS, SLOT_LEN
 
 

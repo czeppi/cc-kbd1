@@ -38,7 +38,7 @@ FLAT_HEAD_SCREW_M5 = FlatHeadScrew(
 
 
 FLAT_HEAD_SCREW_M6 = FlatHeadScrew(
-    head_radius = 14.6,  # measured 14.51
+    head_radius = 7.3,  # measured 7.25
     head_height = 3.3,  # measured: 3.25
     radius = 3.0,
     head_set_insert_radius = 3.3  # 3.6 < x < 4.0
