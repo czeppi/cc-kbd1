@@ -30,6 +30,11 @@ class KeyAssignment:  # KeySetting?
     on_release_key_sequence: KeySequence
 
 
+# class SplitSide:
+#     LEFT = 1
+#     RIGHT = 2
+
+
 Layer = Dict[KeyName, KeyAssignment]
 
 
