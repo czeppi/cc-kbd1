@@ -1,0 +1,60 @@
+
+= layers
+
+:
+Q W E R T TAB     ENTER  Y U I O P
+A S D F G DEl     BSPACE H J K L Ö
+Z X C V B SPACE   SPACE  N M , . -
+
+RT:        
+x x x x x x   x x F1 F2  F3  F4
+x x x x x x   x x F5 F6  F7  F8
+x x x x x x   x x F9 F10 F11 F12
+           
+LT:        
+x x x x x x   x @ " { } `
+x x x x x x   x \ / ( ) $
+x x x x x x   x # ' [ ] ´
+           
+RT:        
+/ * < ^ | x   x x x x x x
+% + ! = & x   x x x x x x
+x > l ? ~ x   x x x x x x
+           
+RT:
+x x M5 M2 M4 x   x PGUP HOME UP   END
+x x x  x  M0 x   x PGDN LEFT DOWN RIGHT
+x x x  x  M1 x   x x    x    x    x 
+
+LT:
+x x x x x x   x + 7 8 9 %
+x x x x x x   x - 4 5 6 ,
+x x x x x x   0 x 1 2 3 .
+
+
+# hints:
+# - ESC is missing
+# - ä, ü and ß are missing
+
+
+= modifiers  # home mod row 
+
+LID: LShift
+LMD: LCtrl
+LRD: LAlt
+LRP: LGui
+RID: RShift
+RMD: RCtrl
+RRD: RAlt
+RRP: RGui
+
+
+= macros
+M0: x x x 
+M1: x x x 
+M2: x x x 
+M3: x x x 
+M4: x x x 
+M5: x x x 
+
+

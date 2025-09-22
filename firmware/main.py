@@ -16,11 +16,48 @@ mouse = Mouse(usb_hid.devices)
 # board.D10 is the cs pin
 sensor = PMW3389.PMW3389(sck=board.GP6, mosi=board.GP7, miso=board.GP4, cs=board.GP22)
 
+
+
+
+
+
+# following combination are possible (ChatGPT)
+#
+# SPI0:
+# Pin-Set  SCK  MOSI  MISO
+# Set 1    GP0  GP3   GP2
+# Set 2    GP4  GP7   GP6
+# Set 3    GP16 GP19  GP18
+# Set 4    GP20 GP23  GP22
+#
+# SPI1:
+# Pin-Set  SCK  MOSI  MISO
+# Set 1    GP10 GP11  GP12
+# Set 2    GP14 GP15  GP13
+# Set 3    GP6  GP7   GP4
+
+
+# following TX/RX combination are possible (ChatGPT)
+#        TX               RX
+# UART0  GP0, GP12, GP16  GP1, GP13, GP17
+# UART1  GP4, GP8,  GP20  GP5, GP9,  GP21
+
+role = 'slave'
+try:
+    import usb_hid
+    if len(usb_hid.devices) > 0:
+        role = 'master'
+except ImportError:
+    role = 'slave'
+
+
+# CS can be connect to an GP pin.
+
 # Any pin. Goes LOW if motion is detected. More reliable.
 mt_pin = DigitalInOut(board.A0)
 mt_pin.direction = Direction.INPUT
 
-button_thumb_down = DigitalInOut(board.GP16)
+button_thumb_down = DigitalInOut(board.GP16)   # any GP pin can used    
 button_thumb_down.direction = Direction.INPUT
 button_thumb_down.pull = Pull.UP
 
