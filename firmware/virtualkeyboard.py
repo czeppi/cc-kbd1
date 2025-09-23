@@ -429,38 +429,6 @@ class VirtualKeyboard:
             if key.is_end_pressing(time):
                 yield from reaction.on_release_key_sequence
 
-    # def _create_deferred_simple_key_commands(self, time: TimeInMs) -> Iterator[KeyCmd]:
-    #     for deferred_key in self._deferred_simple_keys:
-    #          yield from self._create_key_commands(time=time, key=deferred_key.key, layer=deferred_key.layer)
-
-    # def _create_key_commands_from_deferred_keys(self, time: TimeInMs) -> Iterator[KeyCmd]:
-    #     for deferred_key in self._deferred_simple_keys:
-    #         yield from self._create_key_commands(time=time, key=deferred_key.key, layer=deferred_key.layer)
-    #
-    # def _iter_deferred_and_tapped_keys(self, time: TimeInMs) -> Iterator[VirtualKey]:
-    #     #
-    #     for key in self._iter_tap_hold_keys():
-    #         if key.is_end_pressing(time) and key.prev_tap_hold_state == TapHoldState.UNDECIDED:
-    #             yield key
-    #
-    #     # deferred simple keys
-    #     yield from self._deferred_simple_keys
-    #
-    # def _create_key_commands_from_releasing_simple_keys(self, time: TimeInMs) -> Iterator[KeyCmd]:
-    #     next_deferred_keys: List[DeferredSimpleKey] = []
-    #     for deferred_key in self._deferred_simple_keys:
-    #         if deferred_key.key.is_end_pressing(time):
-    #             yield from self._create_key_commands(time=time, key=deferred_key.key, layer=deferred_key.layer)
-    #         else:
-    #             next_deferred_keys.append(deferred_key)
-    #     self._deferred_simple_keys = next_deferred_keys
-
-    # def _add_new_deferred_keys(self, time: TimeInMs) -> None:
-    #     for key in self._simple_keys:
-    #         if key.is_begin_pressing(time):
-    #             new_deferred_key = DeferredSimpleKey(key=key, layer=self._cur_layer)
-    #             self._deferred_simple_keys.append(new_deferred_key)
-
     @staticmethod
     def _create_key_commands(time: TimeInMs, key: SimpleKey, layer: Layer) -> Iterator[KeyCmd]:
         key_assignment = layer[key.name]
@@ -483,20 +451,3 @@ class VirtualKeyboard:
     def iter_physical_keys(self) -> Iterator[IPhysicalKey]:
         yield from self._physical_keys
 
-
-
-
-# def main():
-#     keyboard = KeyboardReader().read()
-#     mouse = Mouse()
-#     clock = Clock()
-#
-#     while True:
-#         update_mouse()
-#
-#         time = clock.value
-#         key_commands = keyboard.update(time)
-#         for key_cmd in key_commands:
-#             send_key_cmd(key_cmd, kbd_device)
-#
-#         time.wait(2)  # ms
