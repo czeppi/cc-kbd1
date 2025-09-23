@@ -1,42 +1,10 @@
 import unittest
-from typing import Optional
 
 from adafruit_hid.keycode import Keycode as KC
+from dummyphysicalkey import DummyPhysicalKey
 
-from virtualkeyboard import IPhysicalKey, KeyName, TimeInMs, VirtualKey, VirtualKeyboard, ModKey, SimpleKey, Layer, \
-    KeyAssignment, KeyCmd, KeyCmdKind, KeyCode, TapHoldKey, KeySequence
-
-
-class DummyPhysicalKey(IPhysicalKey):
-
-    def __init__(self, name: KeyName):
-        self._name = name
-        self._pressed_time: TimeInMs | None = None
-        self._is_bound = False
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-    @property
-    def pressed_time(self) -> Optional[TimeInMs]:
-        return self._pressed_time
-
-    @property
-    def is_bound(self) -> bool:
-        return self._is_bound
-
-    def set_bound(self, is_bound: bool) -> None:
-        self._is_bound = is_bound
-
-    def update(self, time: TimeInMs) -> None:
-        pass
-
-    def press(self, time: TimeInMs | None) -> None:
-        self._pressed_time = time
-
-    def release(self) -> None:
-        self._pressed_time = None
+from virtualkeyboard import TimeInMs, VirtualKey, VirtualKeyboard, ModKey, SimpleKey, Layer, \
+    KeyReaction, KeyCmd, KeyCmdKind, KeyCode, TapHoldKey, KeySequence
 
 
 class VirtualKeyTestWithOnePhysicalKey(unittest.TestCase):
@@ -191,9 +159,9 @@ class TapKeyTest(unittest.TestCase):
         TapHoldKey.TAP_HOLD_TERM = 200
 
     @staticmethod
-    def _create_key_assignment(keycode: KeyCode) -> KeyAssignment:
-        return KeyAssignment(on_press_key_sequence=[KeyCmd(kind=KeyCmdKind.PRESS, key_code=keycode)],
-                             on_release_key_sequence=[KeyCmd(kind=KeyCmdKind.RELEASE, key_code=keycode)])
+    def _create_key_assignment(keycode: KeyCode) -> KeyReaction:
+        return KeyReaction(on_press_key_sequence=[KeyCmd(kind=KeyCmdKind.PRESS, key_code=keycode)],
+                           on_release_key_sequence=[KeyCmd(kind=KeyCmdKind.RELEASE, key_code=keycode)])
 
     def test_aabb_fast(self) -> None:
         """       TAPPING_TERM

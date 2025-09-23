@@ -25,7 +25,7 @@ KeySequence = List[KeyCmd]
 
 
 @dataclass
-class KeyAssignment:  # KeySetting?
+class KeyReaction:  # KeySetting?
     on_press_key_sequence: KeySequence
     on_release_key_sequence: KeySequence
 
@@ -35,7 +35,7 @@ class KeyAssignment:  # KeySetting?
 #     RIGHT = 2
 
 
-Layer = Dict[KeyName, KeyAssignment]
+Layer = Dict[KeyName, KeyReaction]
 
 
 class IPhysicalKey(ABC):
@@ -297,7 +297,7 @@ class ModKey(TapHoldKey):
 class LayerKey(TapHoldKey):
 
     def __init__(self, name: str, physical_keys: List[IPhysicalKey], is_part_of_bigger_one: bool,
-                 tap_key_code: KeyCode, layer: Layer):
+                 layer: Layer):
         super().__init__(name=name, physical_keys=physical_keys, is_part_of_bigger_one=is_part_of_bigger_one)
         self._layer = layer
 
@@ -398,9 +398,10 @@ class VirtualKeyboard:
 
     def _create_all_tap_key_commands(self) -> Iterator[KeyCmd]:
         for key in self._iter_all_tap_keys_where_a_tap_is_detected():
-            key_assignment = self._cur_layer[key.name]  # for simplifying, take current layer
-            yield from key_assignment.on_press_key_sequence
-            yield from key_assignment.on_release_key_sequence
+            reaction = self._cur_layer.get(key.name)  # for simplifying, take current layer
+            if reaction:
+                yield from reaction.on_press_key_sequence
+                yield from reaction.on_release_key_sequence
 
     def _iter_all_tap_keys_where_a_tap_is_detected(self) -> Iterator[TapHoldKey]:
         for key in self._iter_tap_hold_keys():
@@ -410,7 +411,9 @@ class VirtualKeyboard:
 
     def _create_simple_key_commands(self, time: TimeInMs) -> Iterator[KeyCmd]:
         for key in self._simple_keys:
-            key_assignment = self._cur_layer[key.name]  # for simplifying, take current layer
+            reaction = self._cur_layer.get(key.name)  # for simplifying, take current layer
+            if reaction is None:
+                continue
 
             was_deferred = key.was_deferred
             if key.is_begin_pressing(time):
@@ -421,10 +424,10 @@ class VirtualKeyboard:
                 will_be_deferred = False
 
             if was_deferred and not will_be_deferred:
-                yield from key_assignment.on_press_key_sequence
+                yield from reaction.on_press_key_sequence
 
             if key.is_end_pressing(time):
-                yield from key_assignment.on_release_key_sequence
+                yield from reaction.on_release_key_sequence
 
     # def _create_deferred_simple_key_commands(self, time: TimeInMs) -> Iterator[KeyCmd]:
     #     for deferred_key in self._deferred_simple_keys:
@@ -476,6 +479,9 @@ class VirtualKeyboard:
         yield from self._simple_keys
         yield from self._layer_keys
         yield from self._mod_keys
+
+    def iter_physical_keys(self) -> Iterator[IPhysicalKey]:
+        yield from self._physical_keys
 
 
 

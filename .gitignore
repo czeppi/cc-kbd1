@@ -9,3 +9,7 @@ case/#output
 
 /#venv
 /#output
+/firmware/.idea
+/firmware/adafruit_hid
+/firmware/kmk
+/firmware/lib
