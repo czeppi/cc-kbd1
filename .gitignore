@@ -13,3 +13,4 @@ case/#output
 /firmware/adafruit_hid
 /firmware/kmk
 /firmware/lib
+/firmware/#*

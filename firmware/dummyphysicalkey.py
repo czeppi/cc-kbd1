@@ -1,4 +1,7 @@
-from typing import Optional
+try:
+    from typing import Optional
+except ImportError:
+    pass
 
 from virtualkeyboard import IPhysicalKey, KeyName, TimeInMs
 
@@ -15,7 +18,7 @@ class DummyPhysicalKey(IPhysicalKey):
         return self._name
 
     @property
-    def pressed_time(self) -> Optional[TimeInMs]:
+    def press_time(self) -> Optional[TimeInMs]:
         return self._pressed_time
 
     @property

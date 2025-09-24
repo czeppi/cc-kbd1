@@ -133,8 +133,88 @@ A_DOWN = KeyCmd(kind=KeyCmdKind.PRESS, key_code=KC.A)
 A_UP = KeyCmd(kind=KeyCmdKind.RELEASE, key_code=KC.A)
 B_DOWN = KeyCmd(kind=KeyCmdKind.PRESS, key_code=KC.B)
 B_UP = KeyCmd(kind=KeyCmdKind.RELEASE, key_code=KC.B)
+C_DOWN = KeyCmd(kind=KeyCmdKind.PRESS, key_code=KC.C)
+C_UP = KeyCmd(kind=KeyCmdKind.RELEASE, key_code=KC.C)
+D_DOWN = KeyCmd(kind=KeyCmdKind.PRESS, key_code=KC.D)
+D_UP = KeyCmd(kind=KeyCmdKind.RELEASE, key_code=KC.D)
 SHIFT_DOWN = KeyCmd(kind=KeyCmdKind.PRESS, key_code=KC.LEFT_SHIFT)
 SHIFT_UP = KeyCmd(kind=KeyCmdKind.RELEASE, key_code=KC.LEFT_SHIFT)
+
+
+class ComboTest(unittest.TestCase):
+    VKEY_A = 'a'
+    VKEY_B = 'b'
+    VKEY_C = 'c'
+    VKEY_D = 'd'
+
+    def setUp(self):
+        self._pkey1 = DummyPhysicalKey('A')
+        self._pkey2 = DummyPhysicalKey('B')
+        self._pkey3 = DummyPhysicalKey('C')
+        self._pkeys = [self._pkey1, self._pkey2, self._pkey3]
+
+        self._vkey1 = SimpleKey(name=self.VKEY_A, physical_keys=[self._pkey1], is_part_of_bigger_one=False)
+        self._vkey2 = SimpleKey(name=self.VKEY_B, physical_keys=[self._pkey2], is_part_of_bigger_one=True)
+        self._vkey3 = SimpleKey(name=self.VKEY_C, physical_keys=[self._pkey3], is_part_of_bigger_one=True)
+        self._vkey23 = SimpleKey(name=self.VKEY_D, physical_keys=[self._pkey2, self._pkey3], is_part_of_bigger_one=False)
+
+        default_layer: Layer = {
+            self.VKEY_A: self._create_key_assignment(KC.A),
+            self.VKEY_B: self._create_key_assignment(KC.B),
+            self.VKEY_C: self._create_key_assignment(KC.C),
+            self.VKEY_D: self._create_key_assignment(KC.D),
+        }
+        self._kbd = VirtualKeyboard(simple_keys=[self._vkey1, self._vkey2, self._vkey3, self._vkey23],
+                                    mod_keys=[], layer_keys=[], default_layer=default_layer)
+        VirtualKey.COMBO_TERM = 50
+
+    @staticmethod
+    def _create_key_assignment(keycode: KeyCode) -> KeyReaction:
+        return KeyReaction(on_press_key_sequence=[KeyCmd(kind=KeyCmdKind.PRESS, key_code=keycode)],
+                           on_release_key_sequence=[KeyCmd(kind=KeyCmdKind.RELEASE, key_code=keycode)])
+
+    def test_single_combo(self):
+        self._step(0, press=1, expected_key_seq=[A_DOWN])
+        self._step(10, release=1, expected_key_seq=[A_UP])
+
+    def test_is_part_of_bigger_one(self):
+        self._step(0, press=2, expected_key_seq=[])
+        self._step(60, expected_key_seq=[B_DOWN])
+        self._step(70, release=2, expected_key_seq=[B_UP])
+
+    def test_combo_2323(self):
+        self._step(0, press=2, expected_key_seq=[])
+        self._step(10, press=3, expected_key_seq=[D_DOWN])
+        self._step(20, release=2, expected_key_seq=[D_UP])
+        self._step(30, release=3, expected_key_seq=[])
+
+    def test_combo_2332(self):
+        self._step(0, press=2, expected_key_seq=[])
+        self._step(10, press=3, expected_key_seq=[D_DOWN])
+        self._step(20, release=3, expected_key_seq=[D_UP])
+        self._step(30, release=2, expected_key_seq=[])
+
+    def test_combo_slow(self):
+        self._step(0, press=2, expected_key_seq=[])
+        self._step(60, press=3, expected_key_seq=[B_DOWN])
+        self._step(120, release=2, expected_key_seq=[B_UP, C_DOWN])
+        self._step(130, release=3, expected_key_seq=[C_UP])
+
+    def _step(self, time: TimeInMs, expected_key_seq: KeySequence,
+              press: int | None = None, release: int | None = None) -> None:
+        print()
+        print('STEP')
+
+        if press is not None:
+            pkey = self._pkeys[press-1]
+            pkey.press(time=time)
+        elif release is not None:
+            pkey = self._pkeys[release-1]
+            pkey.release()
+
+        act_key_seq = list(self._kbd.update(time=time))
+
+        self.assertEqual(expected_key_seq, act_key_seq)
 
 
 class TapKeyTest(unittest.TestCase):
@@ -144,17 +224,15 @@ class TapKeyTest(unittest.TestCase):
     def setUp(self):
         self._pkey1 = DummyPhysicalKey('A')
         self._pkey2 = DummyPhysicalKey('B')
-        self._vkey_a = VirtualKey(name=self.VKEY_A, physical_keys=[self._pkey1], is_part_of_bigger_one=False)
-        self._vkey_b = VirtualKey(name=self.VKEY_B, physical_keys=[self._pkey2], is_part_of_bigger_one=False)
 
-        self._key1 = ModKey(name=self.VKEY_A, physical_keys=[self._pkey1], is_part_of_bigger_one=False,
-                            mod_key_code=KC.LEFT_SHIFT)
-        self._key2 = SimpleKey(name=self.VKEY_B, physical_keys=[self._pkey2], is_part_of_bigger_one=False)
+        self._mod_key = ModKey(name=self.VKEY_A, physical_keys=[self._pkey1], is_part_of_bigger_one=False,
+                               mod_key_code=KC.LEFT_SHIFT)
+        self._simple_key = SimpleKey(name=self.VKEY_B, physical_keys=[self._pkey2], is_part_of_bigger_one=False)
         default_layer: Layer = {
             self.VKEY_A: self._create_key_assignment(KC.A),
             self.VKEY_B: self._create_key_assignment(KC.B),
         }
-        self._kbd = VirtualKeyboard(simple_keys=[self._key2], mod_keys=[self._key1], layer_keys=[],
+        self._kbd = VirtualKeyboard(simple_keys=[self._simple_key], mod_keys=[self._mod_key], layer_keys=[],
                                     default_layer=default_layer)
         TapHoldKey.TAP_HOLD_TERM = 200
 
@@ -162,6 +240,18 @@ class TapKeyTest(unittest.TestCase):
     def _create_key_assignment(keycode: KeyCode) -> KeyReaction:
         return KeyReaction(on_press_key_sequence=[KeyCmd(kind=KeyCmdKind.PRESS, key_code=keycode)],
                            on_release_key_sequence=[KeyCmd(kind=KeyCmdKind.RELEASE, key_code=keycode)])
+
+    def test_b_solo(self) -> None:
+        """       TAPPING_TERM
+        +--------------|--------------+
+        |   +--------+ |              |
+        |   |   b    | |              |
+        |   +--------+ |              |
+        +--------------|--------------+
+        =>  b
+        """
+        self._step(0, press=2, expected_key_seq=[B_DOWN])
+        self._step(100, release=2, expected_key_seq=[B_UP])
 
     def test_aabb_fast(self) -> None:
         """       TAPPING_TERM

@@ -1,5 +1,9 @@
-from dataclasses import dataclass
-from typing import Dict, List, Callable, Iterator, Tuple
+from dummyphysicalkey import DummyPhysicalKey
+
+try:
+    from typing import Callable, Iterator
+except ImportError:
+    pass
 
 from adafruit_hid.keycode import Keycode as KC
 
@@ -126,11 +130,12 @@ KEYCODES_DATA = [
 ]
 
 
-@dataclass
 class ReactionData:
-    key_code: KeyCode
-    with_shift: bool
-    with_alt: bool = False
+
+    def __init__(self, key_code: KeyCode, with_shift: bool, with_alt: bool = False):
+        self.key_code = key_code
+        self.with_shift = with_shift
+        self.with_alt = with_alt
 
 
 class KeyboardCreator:
@@ -146,13 +151,13 @@ class KeyboardCreator:
     }
 
     def __init__(self, physical_key_creator: Callable[[PinName, PinIndex], IPhysicalKey],
-                 left_controller_pins: Dict[PinName, PinIndex],
-                 right_controller_pins: Dict[PinName, PinIndex],
-                 virtual_keys: Dict[VirtualKeyName, List[PinName]],
-                 virtual_key_order: List[str],
-                 layers: Dict[VirtualKeyName, List[str]],
-                 modifiers: Dict[VirtualKeyName, ModKeyName],
-                 macros: Dict[MacroName, MacroDescription]
+                 left_controller_pins: dict[PinName, PinIndex],
+                 right_controller_pins: dict[PinName, PinIndex],
+                 virtual_keys: dict[VirtualKeyName, list[PinName]],
+                 virtual_key_order: list[str],
+                 layers: dict[VirtualKeyName, list[str]],
+                 modifiers: dict[VirtualKeyName, ModKeyName],
+                 macros: dict[MacroName, MacroDescription]
                  ):
         self._physical_key_creator = physical_key_creator
         self._left_controller_pins = left_controller_pins
@@ -163,17 +168,20 @@ class KeyboardCreator:
         self._modifiers = modifiers
         self._macros = macros
 
-        self._physical_key_map: Dict[PinName, IPhysicalKey] = {}
-        self._reaction_map: Dict[ReactionName, ReactionData] = {}
+        self._physical_key_map: dict[PinName, IPhysicalKey] = {}
+        self._reaction_map: dict[ReactionName, ReactionData] = {}
 
     def create(self) -> VirtualKeyboard:
         self._reaction_map = dict(self._create_reaction_map())
 
         all_controller_pins = self._left_controller_pins | self._right_controller_pins
+        #all_controller_pins = self._right_controller_pins  # todo
         self._physical_key_map = {
-            pin_name: self._physical_key_creator(pin_name, pin_index)
+            pin_name: self._physical_key_creator(pin_name, pin_index) if pin_name == 'right-thumb-down' else DummyPhysicalKey(pin_name)
             for pin_name, pin_index in all_controller_pins.items()
         }
+        # for pin_name, pin_index in self._left_controller_pins.items():
+        #     self._physical_key_map[]
 
         simple_key_names = set(self._virtual_keys.keys()) - set(self._modifiers.keys()) - set(self._layers.keys())
 
@@ -193,7 +201,7 @@ class KeyboardCreator:
         )
 
     @staticmethod
-    def _create_reaction_map() -> Dict[ReactionName, ReactionData]:
+    def _create_reaction_map() -> dict[ReactionName, ReactionData]:
         for data in KEYCODES_DATA:
             key_code, en_reaction_without_shift, en_reaction_with_shift, de_reaction_without_shift, de_reaction_with_shift = data[:5]
 
@@ -246,7 +254,7 @@ class KeyboardCreator:
                       is_part_of_bigger_one=self._calc_is_part_of_bigger_one(pin_names),
                       mod_key_code=mod_key_code)
 
-    def _create_layer_key(self, key_name: VirtualKeyName, lines: List[str]) -> LayerKey:
+    def _create_layer_key(self, key_name: VirtualKeyName, lines: list[str]) -> LayerKey:
         pin_names = self._virtual_keys[key_name]
         layer = dict(self._create_layer(lines))
 
@@ -255,12 +263,12 @@ class KeyboardCreator:
                         is_part_of_bigger_one=self._calc_is_part_of_bigger_one(pin_names),
                         layer=layer)
 
-    def _calc_is_part_of_bigger_one(self, pin_names: List[PinName]) -> bool:
+    def _calc_is_part_of_bigger_one(self, pin_names: list[PinName]) -> bool:
         pin_name_set = set(pin_names)
         return any((pin_name_set <= set(pin_names))
                    for pin_names in self._virtual_keys.values())
 
-    def _create_layer(self, lines: List[str]) -> Iterator[Tuple[KeyName, KeyReaction]]:
+    def _create_layer(self, lines: list[str]) -> Iterator[tuple[KeyName, KeyReaction]]:
         assert len(lines) == len(self._virtual_key_order)
 
         for line, key_order_in_row in zip(lines, self._virtual_key_order):

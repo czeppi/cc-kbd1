@@ -1,35 +1,69 @@
+import board
+
+# following combination are possible (ChatGPT)
+#
+# SPI0:
+# SCK : GP2, GP6, GP18   # SPI0 SC/SCK
+# MOSI: GP3, GP7, GP19   # SPI0 TX
+# MISO: GP0, GP4, GP16   # SPI0 RX
+# CS:   GP0 - GP28
+#
+# SPI1:
+# SCK:  GP10, GP14   # SPI1 SCK
+# MOSI: GP11, GP15   # SPI1 TX
+# MISO: GP8,  GP12   # SPI1 RX
+# CS:   GP0 - GP28
+
+# MOSI(TX) = Microcontroler OUT - Sensor IN
+# MISO(RX) = Microcontroler IN - Sensor OUT
+# TX = out
+# RX = in
+
+
+# following TX/RX combination are possible (ChatGPT)
+#        TX               RX
+# UART0  GP0, GP12, GP16  GP1, GP13, GP17
+# UART1  GP4, GP8,  GP20  GP5, GP9,  GP21
+
+# UART0:
+# TX: GP0, GP12, GP16
+# RX: GP1, GP13, GP17
+
+# UART1:
+# TX: GP4, GP8,  GP20?  # GP20 not in data sheet
+# RX: GP5, GP9,  GP21?  # GP21 not in data sheet
 
 
 LEFT_CONTROLLER_PINS = {
-    'left-pinky-up': 5,
-    'left-pinky-down': 5,
-    'left-ring-up': 5,
-    'left-ring-down': 5,
-    'left-middle-up': 5,
-    'left-middle-down': 5,
-    'left-index-up': 5,
-    'left-index-down': 5,
-    'left-index-right': 5,
-    'left-thumb-up': 5,
-    'left-thumb-down': 5,
-    'left-tx': 5,
-    'left-rx': 5,
+    'left-tx': board.GP0,
+    'left-rx': board.GP1,
+    'left-index-right': board.GP2,
+    'left-index-up': board.GP3,
+    'left-index-down': board.GP4,
+    'left-middle-up': board.GP10,
+    'left-middle-down': board.GP11,
+    'left-ring-up': board.GP12,
+    'left-ring-down': board.GP13,
+    'left-pinky-up': board.GP14,
+    'left-pinky-down': board.GP15,
+    'left-thumb-up': board.GP5,
+    'left-thumb-down': board.GP5,
 }
 
 RIGHT_CONTROLLER_PINS = {
-    'right-pinky-up': 5,
-    'right-pinky-down': 5,
-    'right-ring-up': 5,
-    'right-ring-down': 5,
-    'right-middle-up': 5,
-    'right-middle-down': 5,
-    'right-index-up': 5,
-    'right-index-down': 5,
-    'right-index-left': 5,
-    'right-thumb-up': 5,
-    'right-thumb-down': 5,
-    'right-tx': 5,
-    'right-rx': 5,
+    'right-tx': board.GP0,
+    'right-rx': board.GP1,
+    'right-index-left': board.GP2,
+    'right-index-up': board.GP3,
+    'right-index-down': board.GP4,
+    'right-middle-up': board.GP10,
+    'right-middle-down': board.GP11,
+    'right-ring-up': board.GP12,
+    'right-ring-down': board.GP13,
+    'right-pinky-up': board.GP14,
+    'right-pinky-down': board.GP15,
+    'right-thumb-up': board.GP21,
+    'right-thumb-down': board.GP20,
 }
 
 VIRTUAL_KEYS = {
