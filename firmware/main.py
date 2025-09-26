@@ -67,10 +67,6 @@ def main():
     #print_keyboard_info(virt_keyboard)
 
     while True:
-        if check_for_stop():
-            print('exit')
-            break
-
         update_sensor()
         #update_thumb_down_button()
         update_virtual_keyboard(virt_keyboard)
@@ -86,7 +82,7 @@ def print_keyboard_info(virt_keyboard: VirtualKeyboard) -> None:
     for vkey in virt_keyboard.iter_all_virtual_keys():
         print(f'{vkey.name} ({str(type(vkey))}): ')
         for pkey in vkey.physical_keys:
-            print(f'- {pkey.name} ({str(type(pkey))})')
+            print(f'- {pkey.name} ({id(pkey)}) ({str(type(pkey))})')
 
 
 def create_physical_key(key_name: KeyName, gp_index: int) -> IPhysicalKey:
@@ -158,10 +154,6 @@ def update_thumb_down_button():
         if new_value:  # pressed (HI)
             kbd_device.send(Keycode.A)
         button_thumb_down_old_value = button_thumb_down.value
-
-
-def check_for_stop():
-    return not button_thumb_down.value
 
 
 main()

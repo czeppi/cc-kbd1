@@ -43,6 +43,5 @@ class RealPhysicalKey(IPhysicalKey):
                 RealPhysicalKey.should_stop = True
                 print('begin stopping...')
         else:
-            print(f'{time:.2f} "{self._name}"-update: value={self._inout.value}')
             self._press_time = time  # pressed
             RealPhysicalKey.pressed_key = True

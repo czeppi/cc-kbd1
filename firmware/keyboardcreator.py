@@ -8,7 +8,7 @@ except ImportError:
 from adafruit_hid.keycode import Keycode as KC
 
 from virtualkeyboard import VirtualKeyboard, IPhysicalKey, SimpleKey, ModKey, KeyName, KeyReaction, LayerKey, KeyCode, \
-    KeyCmd, KeyCmdKind
+    KeyCmd, KeyCmdKind, VirtualKey
 
 PinName = str  # p.e. 'left-pinky-down'
 PinIndex = int
@@ -190,18 +190,25 @@ class KeyboardCreator:
             for macro_name, macro_desc in self._macros.items()
         }
 
+        simple_keys = [self._create_simple_key(vkey_name)
+                       for vkey_name in simple_key_names]
+        mod_keys = [self._create_mod_key(vkey_name, mod_key_name)
+                    for vkey_name, mod_key_name in self._modifiers.items()]
+        layer_keys = [self._create_layer_key(vkey_name, lines)
+                      for vkey_name, lines in self._layers.items() if vkey_name != '']
+
+        all_vkeys = simple_keys + mod_keys + layer_keys
+        self._build_dependencies(all_vkeys)
+
         return VirtualKeyboard(
-            simple_keys=[self._create_simple_key(vkey_name)
-                         for vkey_name in simple_key_names],
-            mod_keys=[self._create_mod_key(vkey_name, mod_key_name)
-                      for vkey_name, mod_key_name in self._modifiers.items()],
-            layer_keys=[self._create_layer_key(vkey_name, lines)
-                        for vkey_name, lines in self._layers.items() if vkey_name != ''],
+            simple_keys=simple_keys,
+            mod_keys= mod_keys,
+            layer_keys=layer_keys,
             default_layer=dict(self._create_layer(self._layers[''])),
         )
 
     @staticmethod
-    def _create_reaction_map() -> dict[ReactionName, ReactionData]:
+    def _create_reaction_map() -> Iterator[tuple[ReactionName, ReactionData]]:
         for data in KEYCODES_DATA:
             key_code, en_reaction_without_shift, en_reaction_with_shift, de_reaction_without_shift, de_reaction_with_shift = data[:5]
 
@@ -242,8 +249,7 @@ class KeyboardCreator:
         pin_names = self._virtual_keys[key_name]
 
         return SimpleKey(key_name,
-                         physical_keys=[self._physical_key_map[pin_name] for pin_name in pin_names],
-                         is_part_of_bigger_one=self._calc_is_part_of_bigger_one(pin_names))
+                         physical_keys=[self._physical_key_map[pin_name] for pin_name in pin_names])
 
     def _create_mod_key(self, key_name: VirtualKeyName, mod_key_name: VirtualKeyName) -> ModKey:
         pin_names = self._virtual_keys[key_name]
@@ -251,7 +257,6 @@ class KeyboardCreator:
 
         return ModKey(key_name,
                       physical_keys=[self._physical_key_map[pin_name] for pin_name in pin_names],
-                      is_part_of_bigger_one=self._calc_is_part_of_bigger_one(pin_names),
                       mod_key_code=mod_key_code)
 
     def _create_layer_key(self, key_name: VirtualKeyName, lines: list[str]) -> LayerKey:
@@ -260,21 +265,27 @@ class KeyboardCreator:
 
         return LayerKey(key_name,
                         physical_keys=[self._physical_key_map[pin_name] for pin_name in pin_names],
-                        is_part_of_bigger_one=self._calc_is_part_of_bigger_one(pin_names),
                         layer=layer)
 
-    def _calc_is_part_of_bigger_one(self, pin_names: list[PinName]) -> bool:
-        pin_name_set = set(pin_names)
-        return any((pin_name_set <= set(pin_names))
-                   for pin_names in self._virtual_keys.values())
+    @staticmethod
+    def _build_dependencies(all_vkeys: list[VirtualKey]) -> None:
+        sorted_vkeys = sorted(all_vkeys, key=lambda vkey: len(vkey.physical_keys))
+
+        n = len(sorted_vkeys)
+        for i in range(n - 1):
+            vkey1 = sorted_vkeys[i]
+            for j in range(i + 1, n):
+                vkey2 = sorted_vkeys[j]
+                if vkey1 < vkey2:
+                    vkey1.set_is_part_of_bigger_one(True)
+                    vkey1.add_bigger_vkey(vkey2)
+                    vkey2.add_smaller_vkey(vkey1)
 
     def _create_layer(self, lines: list[str]) -> Iterator[tuple[KeyName, KeyReaction]]:
         assert len(lines) == len(self._virtual_key_order)
 
         for line, key_order_in_row in zip(lines, self._virtual_key_order):
             items = line.split()
-            if len(items) != len(key_order_in_row):
-                print(line)
             assert len(items) == len(key_order_in_row)
 
             for item, key_name in zip(items, key_order_in_row):
@@ -289,8 +300,6 @@ class KeyboardCreator:
         if reaction_name in self._macros:
             return None  # todo: implement
 
-        if reaction_name not in self._reaction_map:
-            print(reaction_name)
         assert reaction_name in self._reaction_map
         reaction_data: ReactionData = self._reaction_map[reaction_name]
         key_code = reaction_data.key_code
