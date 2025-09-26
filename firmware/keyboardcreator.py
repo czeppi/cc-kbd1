@@ -278,8 +278,6 @@ class KeyboardCreator:
                 vkey2 = sorted_vkeys[j]
                 if vkey1 < vkey2:
                     vkey1.set_is_part_of_bigger_one(True)
-                    vkey1.add_bigger_vkey(vkey2)
-                    vkey2.add_smaller_vkey(vkey1)
 
     def _create_layer(self, lines: list[str]) -> Iterator[tuple[KeyName, KeyReaction]]:
         assert len(lines) == len(self._virtual_key_order)

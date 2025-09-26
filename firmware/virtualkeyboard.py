@@ -88,14 +88,6 @@ class IPhysicalKey:
         return self.press_time is not None
 
 
-# class VirtualKeyPressState:
-#     UNCHANGED_RELEASED = '--'
-#     UNCHANGED_PRESSED = 'xx'
-#     BEGIN_PRESSING = '-x'
-#     END_PRESSING = 'x-'
-#     PRESS_AND_RELEASE = '-x-'  # a vpress-press is recognized at the release of pkey
-
-
 class VKeyPressState:
     RELEASED = '-'
     PRESSED = 'x'
@@ -103,35 +95,6 @@ class VKeyPressState:
 
 
 VKeyPressStateStr = str  # values of VKeyPressState
-
-
-# class VirtualKeyPressStateTransition:
-#     """
-#                            next
-#                |  -                x   |   ?
-#        ----------------------------------------
-#              - |               | press |
-#        prev  x | release       |       | weird
-#              ? | press+release | press |
-#     """
-#
-#     def __init__(self, prev_state: VKeyPressStateStr, next_state: VKeyPressStateStr):
-#         self.prev_state = prev_state
-#         self.next_state = next_state
-#
-#     def update_press_state(self, time: TimeInMs) -> bool:
-#         if self.prev_state == 'x' and self.next_state == '?':
-#             raise Exception('weird')
-#
-#         if self.next_state == 'x' and self.prev_state != 'x':
-#             press()
-#
-#         if self.next_state == '-':
-#             if self.prev_state == '?':
-#                 press()
-#                 release()
-#             elif self.prev_state == 'x':
-#                 release()
 
 
 class VirtualKey:
@@ -150,8 +113,6 @@ class VirtualKey:
         self._physical_keys = physical_keys
         self._pkey_names = {pkey.name for pkey in physical_keys}
         self._is_part_of_bigger_one = False  # set later   # todo: remove
-        self._including_smaller_vkeys: list[VirtualKey] = []  # set later  # todo: remove
-        self._bigger_vkeys: list[VirtualKey] = []  # bigger vkeys
 
         self._last_press_time: TimeInMs = -2000
         self._last_release_time: TimeInMs = -1000
@@ -173,12 +134,6 @@ class VirtualKey:
     def set_is_part_of_bigger_one(self, value: bool) -> None:
         self._is_part_of_bigger_one = value
 
-    def add_smaller_vkey(self, smaller_vkey: VirtualKey) -> None:
-        self._including_smaller_vkeys.append(smaller_vkey)
-
-    def add_bigger_vkey(self, bigger_vkey: VirtualKey) -> None:
-        self._bigger_vkeys.append(bigger_vkey)
-
     @property
     def name(self) -> str:
         return self._name
@@ -186,10 +141,6 @@ class VirtualKey:
     @property
     def physical_keys(self) -> list[IPhysicalKey]:
         return self._physical_keys
-
-    @property
-    def including_smaller_vkeys(self) -> list[VirtualKey]:
-        return self._including_smaller_vkeys
 
     @property
     def last_press_time(self) -> TimeInMs:
@@ -219,25 +170,6 @@ class VirtualKey:
         """
         return self._cur_press_state == VKeyPressState.PRESSED
 
-    # def was_pressed(self, time: TimeInMs) -> bool:  # from the prev update until now
-    #     """
-    #                     was  is
-    #         R < P < C    T   T
-    #         R < P == C   F   T
-    #         P < R < C    F   F
-    #         P < R == C   T   F
-    #
-    #         R=released-time
-    #         P=pressed-time
-    #         C=current-time
-    #         T=true
-    #         F=False
-    #     """
-    #     released = self._last_release_time
-    #     pressed = self._last_press_time
-    #
-    #     return released < pressed < time or pressed < released == time
-
     def was_pressed(self, time: TimeInMs) -> bool:  # from the prev update until now
         """
                              cur/next
@@ -248,9 +180,6 @@ class VirtualKey:
                  ? | False | False | False
         """
         return self._prev_press_state == VKeyPressState.PRESSED
-
-    # def is_begin_pressing(self, time: TimeInMs) -> bool:
-    #     return self.will_be_pressed and not self.was_pressed(time)
 
     def is_begin_pressing(self, time: TimeInMs) -> bool:
         """
@@ -267,9 +196,6 @@ class VirtualKey:
         return prev_state == VKeyPressState.UNDECIDED and next_state == VKeyPressState.RELEASED \
             or prev_state != VKeyPressState.PRESSED and next_state == VKeyPressState.PRESSED
 
-    # def is_end_pressing(self, time: TimeInMs) -> bool:
-    #     return not self.will_be_pressed and self.was_pressed(time)
-
     def is_end_pressing(self, time: TimeInMs) -> bool:
         """
                            cur / next
@@ -283,38 +209,6 @@ class VirtualKey:
         next_state = self._cur_press_state
 
         return prev_state != VKeyPressState.RELEASED and next_state == VKeyPressState.RELEASED
-
-    # def calc_press_state_old(self, time: TimeInMs) -> VKeyPressStateStr:
-    #     assert self._last_press_time <= time
-    #     assert self._last_release_time <= time
-    #
-    #     if time == self._last_press_time == self._last_release_time:
-    #         return VirtualKeyPressState.PRESS_AND_RELEASE
-    #
-    #     elif time == self._last_press_time:
-    #         return VirtualKeyPressState.BEGIN_PRESSING
-    #
-    #     elif time == self._last_release_time:
-    #         return VirtualKeyPressState.END_PRESSING
-    #
-    #     elif self._last_press_time == self._last_release_time:
-    #         return VirtualKeyPressState.UNCHANGED_RELEASED
-    #
-    #     elif self._last_release_time < self._last_press_time:
-    #         return VirtualKeyPressState.UNCHANGED_PRESSED
-    #
-    #     else:
-    #         return VirtualKeyPressState.UNCHANGED_RELEASED
-
-    # def update_press_state_new(self, time: TimeInMs) -> bool:
-    #     num_pkeys_begin_pressing = self._calc_()
-    #     num_pkeys_end_pressing = self._calc_()
-    #
-    #     if num_pkeys_begin_pressing > 0 and num_pkeys_end_pressing == 0:
-    #         => poss press
-    #
-    #     elif num_pkeys_begin_pressing == 0 and num_pkeys_end_pressing > 0:
-    #         => poss release
 
     def update_press_state(self, time: TimeInMs) -> bool:
         """ return: has state changed
@@ -347,79 +241,19 @@ class VirtualKey:
 
         if self.is_end_pressing(time):
             self._last_release_time = time
-            # for pkey in self._physical_keys:
-            #     pkey.set_bound(False)
 
         return self._prev_press_state != self.cur_press_state
 
-    # def _calc_press_state(self, time: TimeInMs) -> VKeyPressStateStr:
-    #     sorted_pressed_times = sorted(self._iter_pressed_times_of_physical_keys())
-    #
-    #     if self._all_pressed_in_time(sorted_pressed_times):
-    #         last_press_time = sorted_pressed_times[-1]
-    #         if len(self._bigger_vkeys) == 0:
-    #             return VKeyPressState.PRESSED
-    #
-    #         if self._is_press_of_bigger_one_detected(time):
-    #             return VKeyPressState.RELEASED
-    #
-    #         if self._is_part_of_bigger_one and time - last_press_time <= self.COMBO_TERM:
-    #             return VKeyPressState.UNDECIDED
-    #         else:
-    #             return VKeyPressState.PRESSED
-    #     else:
-    #         return VKeyPressState.RELEASED
-
-    # def _is_press_of_bigger_one_detected(self, time: TimeInMs) -> bool:
-    #     for bigger_vkey in self._bigger_vkeys:
-    #         if bigger_vkey._last_press_time == time:  # was a press at a bigger vkey recognized now?
-    #             return True
-    #
-    #     return False
-
-    # def update_press_state_old(self, time: TimeInMs) -> bool:
-    #     """ return: has state changed
-    #     """
-    #     print(f'{time} update_press_state({self.name}):')
-    #     for pkey in self._physical_keys:
-    #         print(f'  {pkey.name}: press_time={pkey.press_time}')
-    #     sorted_pressed_times = sorted(self._iter_pressed_times_of_physical_keys())
-    #
-    #     if self._all_unbound_and_pressed_in_time(sorted_pressed_times):
-    #         if self._last_press_time <= self._last_release_time:  # was released?
-    #             last_press_time = sorted_pressed_times[-1]
-    #             if not self._is_part_of_bigger_one or time - last_press_time > self.COMBO_TERM:
-    #                 self._press(time)
-    #                 return True
-    #     else:
-    #         if self._last_release_time < self._last_press_time:  # was pressed?
-    #             self._release(time)
-    #             return True
-    #
-    #     return False
 
     def _iter_pressed_times_of_physical_keys(self) -> Iterator[TimeInMs]:
         for pkey in self._physical_keys:
             if pkey.press_time is not None:
                 yield pkey.press_time
 
-    # def _all_unbound_and_pressed_in_time(self, sorted_pressed_times: list[TimeInMs]) -> bool:
-    #     return (all(pkey.is_pressed and not pkey.is_bound for pkey in self._physical_keys) and
-    #             all(t2 - t1 < self.COMBO_TERM
-    #                 for t1, t2 in zip(sorted_pressed_times[:-1], sorted_pressed_times[1:])))
-
     def _all_pressed_in_time(self, sorted_pressed_times: list[TimeInMs]) -> bool:
         return (len(sorted_pressed_times) == len(self._physical_keys) and
                 all(t2 - t1 < self.COMBO_TERM
                     for t1, t2 in zip(sorted_pressed_times[:-1], sorted_pressed_times[1:])))
-
-    # def _press(self, time: TimeInMs) -> None:
-    #     self._last_press_time = time
-    #     for pkey in self._physical_keys:
-    #         pkey.set_bound(is_bound=True)
-
-    # def _release(self, time: TimeInMs) -> None:
-    #     self._last_release_time = time
 
     def bigger_vkey_was_pressed(self) -> None:
         if self._cur_press_state == VKeyPressState.UNDECIDED:
@@ -602,9 +436,6 @@ class VirtualKeyboard:
     def _update_press_state_of_virtual_keys(self, time: TimeInMs) -> Iterator[VirtualKey]:
         for vkey in self._descending_vkeys:  # starting with vkeys with many physical keys
             changed = vkey.update_press_state(time=time)
-            if vkey.last_press_time == time:  # recognize a press?
-                for vkey2 in vkey.including_smaller_vkeys:  # including vkeys will come late in self._descending_vkeys
-                    vkey2.bigger_vkey_was_pressed()
             if changed:
                 yield vkey
 

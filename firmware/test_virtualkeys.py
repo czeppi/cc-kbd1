@@ -208,8 +208,6 @@ class VirtualKeyPressTest2Combo(VirtualKeyPressTestBase):
         self._vkey2.set_is_part_of_bigger_one(True)
 
         self._vkey12 = VirtualKey(name='c', physical_keys=[self._pkey1, self._pkey2])
-        self._vkey2.add_smaller_vkey(self._vkey1)
-        self._vkey2.add_smaller_vkey(self._vkey2)
 
     def _iter_pkeys(self) -> Iterator[DummyPhysicalKey]:
         yield self._pkey1
