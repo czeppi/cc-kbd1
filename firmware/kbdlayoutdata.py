@@ -1,4 +1,4 @@
-import board
+#import board
 
 # following combination are possible (ChatGPT)
 #
@@ -34,37 +34,37 @@ import board
 # RX: GP5, GP9,  GP21?  # GP21 not in data sheet
 
 
-LEFT_CONTROLLER_PINS = {
-    'left-tx': board.GP0,
-    'left-rx': board.GP1,
-    'left-index-right': board.GP2,
-    'left-index-up': board.GP3,
-    'left-index-down': board.GP4,
-    'left-middle-up': board.GP10,
-    'left-middle-down': board.GP11,
-    'left-ring-up': board.GP12,
-    'left-ring-down': board.GP13,
-    'left-pinky-up': board.GP14,
-    'left-pinky-down': board.GP15,
-    'left-thumb-up': board.GP5,
-    'left-thumb-down': board.GP5,
-}
-
-RIGHT_CONTROLLER_PINS = {
-    'right-tx': board.GP0,
-    'right-rx': board.GP1,
-    'right-index-left': board.GP2,
-    'right-index-up': board.GP3,
-    'right-index-down': board.GP4,
-    'right-middle-up': board.GP10,
-    'right-middle-down': board.GP11,
-    'right-ring-up': board.GP12,
-    'right-ring-down': board.GP13,
-    'right-pinky-up': board.GP14,
-    'right-pinky-down': board.GP15,
-    'right-thumb-up': board.GP21,
-    'right-thumb-down': board.GP20,
-}
+# LEFT_CONTROLLER_PINS = {
+#     'left-tx': board.GP0,
+#     'left-rx': board.GP1,
+#     'left-index-right': board.GP2,
+#     'left-index-up': board.GP3,
+#     'left-index-down': board.GP4,
+#     'left-middle-up': board.GP10,
+#     'left-middle-down': board.GP11,
+#     'left-ring-up': board.GP12,
+#     'left-ring-down': board.GP13,
+#     'left-pinky-up': board.GP14,
+#     'left-pinky-down': board.GP15,
+#     'left-thumb-up': board.GP5,
+#     'left-thumb-down': board.GP5,
+# }
+#
+# RIGHT_CONTROLLER_PINS = {
+#     'right-tx': board.GP0,
+#     'right-rx': board.GP1,
+#     'right-index-left': board.GP2,
+#     'right-index-up': board.GP3,
+#     'right-index-down': board.GP4,
+#     'right-middle-up': board.GP10,
+#     'right-middle-down': board.GP11,
+#     'right-ring-up': board.GP12,
+#     'right-ring-down': board.GP13,
+#     'right-pinky-up': board.GP14,
+#     'right-pinky-down': board.GP15,
+#     'right-thumb-up': board.GP21,
+#     'right-thumb-down': board.GP20,
+# }
 
 VIRTUAL_KEYS = {
     'lpu': ['left-pinky-up'],

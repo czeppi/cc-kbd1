@@ -8,14 +8,29 @@ from adafruit_hid.keyboard import Keyboard
 from adafruit_hid.keycode import Keycode
 from adafruit_hid.mouse import Mouse
 
-from kbdlayoutdata import LEFT_CONTROLLER_PINS, RIGHT_CONTROLLER_PINS, VIRTUAL_KEYS, VIRTUAL_KEY_ORDER, LAYERS, \
+from kbdlayoutdata import VIRTUAL_KEYS, VIRTUAL_KEY_ORDER, LAYERS, \
     MODIFIERS, MACROS
 from keyboardcreator import KeyboardCreator
-from realkey import RealPhysicalKey
-from virtualkeyboard import VirtualKeyboard, KeyCmd, KeyCmdKind, IPhysicalKey
-from base import KeyName
+from virtualkeyboard import VirtualKeyboard, KeyCmdKind, PhysicalKey
+from base import PinName, TimeInMs
 
 TARGET_CPI = 800
+
+KEY_GP_MAP = {
+    'right-tx': DigitalInOut(board.GP0),
+    'right-rx': DigitalInOut(board.GP1),
+    'right-index-left': DigitalInOut(board.GP2),
+    'right-index-up': DigitalInOut(board.GP3),
+    'right-index-down': DigitalInOut(board.GP4),
+    'right-middle-up': DigitalInOut(board.GP10),
+    'right-middle-down': DigitalInOut(board.GP11),
+    'right-ring-up': DigitalInOut(board.GP12),
+    'right-ring-down': DigitalInOut(board.GP13),
+    'right-pinky-up': DigitalInOut(board.GP14),
+    'right-pinky-down': DigitalInOut(board.GP15),
+    'right-thumb-up': DigitalInOut(board.GP21),
+    'right-thumb-down': DigitalInOut(board.GP20),
+}
 
 # Set up a keyboard device.
 kbd_device = Keyboard(usb_hid.devices)
@@ -54,11 +69,9 @@ mt_pin.direction = Direction.INPUT
 
 def main():
     init_sensor()
+    init_key_gp_map()
 
-    creator = KeyboardCreator(physical_key_creator=create_physical_key,
-                              left_controller_pins=LEFT_CONTROLLER_PINS,
-                              right_controller_pins=RIGHT_CONTROLLER_PINS,
-                              virtual_keys=VIRTUAL_KEYS,
+    creator = KeyboardCreator(virtual_keys=VIRTUAL_KEYS,
                               virtual_key_order=VIRTUAL_KEY_ORDER,
                               layers=LAYERS,
                               modifiers=MODIFIERS,
@@ -68,6 +81,7 @@ def main():
     # #print_keyboard_info(virt_keyboard)
 
     sensor_times = []
+    gp_times = []
     keyboard_times = []
     n = 100
 
@@ -80,17 +94,32 @@ def main():
             t2 = time.monotonic() * 1000  # in ms
             sensor_times.append(t2 - t1)
 
-            update_virtual_keyboard(virt_keyboard)
+            pressed_pkeys = get_pressed_pkeys()
+            pkey_update_time = time.monotonic() * 1000  #  todo: before or after get_pressed_keys()?
             t3 = time.monotonic() * 1000  # in ms
-            keyboard_times.append(t3 - t2)
+            gp_times.append(t3 - t2)
+
+            update_virtual_keyboard(virt_keyboard, pressed_pkeys=pressed_pkeys, pkey_update_time=pkey_update_time)
+            t4 = time.monotonic() * 1000  # in ms
+            keyboard_times.append(t4 - t3)
 
             time.sleep(0.01)  # from ChatGPT
 
-        t4 = time.monotonic() * 1000  # in ms
-        t4 = time.monotonic() * 1000  # in ms
-        print(f'CYCLUS: sensor={sum(sensor_times)/n} ({max(sensor_times)}), keyboard={sum(keyboard_times)/n} ({max(keyboard_times)}), cyclus={(t4 - t0) / n}')
+        t5 = time.monotonic() * 1000  # in ms
+        print(f'CYCLUS: sensor={sum(sensor_times)/n} ({max(sensor_times)}), '
+              f'gp_times={sum(gp_times)/n} ({max(gp_times)}) '
+              f'keyboard={sum(keyboard_times)/n} ({max(keyboard_times)}), '
+              f'cyclus={(t5 - t0) / n}')
+
         sensor_times.clear()
+        gp_times.clear()
         keyboard_times.clear()
+
+
+def init_key_gp_map():
+    for gp in KEY_GP_MAP.values():
+        gp.direction = Direction.INPUT
+        gp.pull = Pull.UP
 
 
 def print_keyboard_info(virt_keyboard: VirtualKeyboard) -> None:
@@ -98,10 +127,6 @@ def print_keyboard_info(virt_keyboard: VirtualKeyboard) -> None:
         print(f'{vkey.name} ({str(type(vkey))}): ')
         for pkey in vkey.physical_keys:
             print(f'- {pkey.name} ({id(pkey)}) ({str(type(pkey))})')
-
-
-def create_physical_key(key_name: KeyName, gp_index: int) -> IPhysicalKey:
-    return RealPhysicalKey(key_name, gp_index=gp_index)
 
 
 def init_sensor():
@@ -153,9 +178,17 @@ def delta(value):
     return (value & 0x7FFF)
 
 
-def update_virtual_keyboard(virt_keyboard: VirtualKeyboard):
+def get_pressed_pkeys() -> set[PinName]:
+    return {pkey_name
+            for pkey_name, gp in KEY_GP_MAP.items()
+            if not gp.value}
+
+
+def update_virtual_keyboard(virt_keyboard: VirtualKeyboard, pressed_pkeys: set[PinName], pkey_update_time: TimeInMs):
     time_in_ms = time.monotonic() * 1000
-    key_seq = list(virt_keyboard.update(time_in_ms))
+
+    key_seq = list(virt_keyboard.update(time_in_ms, pressed_pkeys=pressed_pkeys, pkey_update_time=pkey_update_time))
+
     if key_seq:
         print(f'{int(time_in_ms)} key_seq: {key_seq}')
         for key_cmd in key_seq:
@@ -175,5 +208,12 @@ def update_thumb_down_button():
             kbd_device.send(Keycode.A)
         button_thumb_down_old_value = button_thumb_down.value
 
+
+class DigitalInput:
+
+    def __init__(self, gp_index: int):
+        self._inout = DigitalInOut(gp_index)
+        self._inout.direction = Direction.INPUT
+        self._inout.pull = Pull.UP
 
 main()

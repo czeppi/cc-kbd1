@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from base import TimeInMs, KeyCode, VirtualKeyName
+from base import TimeInMs, KeyCode, VirtualKeyName, PinName
 
 try:
     from typing import Iterator
@@ -57,17 +57,22 @@ class KeyReaction:  # KeySetting?
 Layer = dict  # dict[KeyName, KeyReaction]
 
 
-class IPhysicalKey:
+class PhysicalKey:
+
+    def __init__(self, name: PinName):
+        self._name = name
+        self._pressed_time: TimeInMs | None = None
+        self._bound_vkey_name: VirtualKeyName | None = None
 
     @property
     def name(self) -> str:
-        raise NotImplementedError()  # abstract
+        return self._name
 
     @property
     def press_time(self) -> TimeInMs | None:
         """ if the key is pressed, get the time
         """
-        raise NotImplementedError()  # abstract
+        return self._pressed_time
 
     @property
     def bound_vkey_name(self) -> VirtualKeyName | None:
@@ -83,13 +88,17 @@ class IPhysicalKey:
 
             if a 'q' is recognized, than bound the two physical keys, to avoid double using.
         """
-        raise NotImplementedError()  # abstract
+        return self._bound_vkey_name
 
     def set_bound_by_vkey(self, vkey_name: VirtualKeyName | None) -> None:
-        raise NotImplementedError()  # abstract
+        self._bound_vkey_name = vkey_name
 
-    def update(self, time: TimeInMs) -> None:
-        raise NotImplementedError()  # abstract
+    def update(self, time: TimeInMs, will_be_pressed: bool) -> None:
+        if will_be_pressed:
+            if self._pressed_time is None:
+                self._pressed_time = time
+        else:
+            self._pressed_time = None
 
     @property
     def is_pressed(self) -> bool:
@@ -108,7 +117,7 @@ VKeyPressStateStr = str  # values of VKeyPressState
 class VirtualKey:
     COMBO_TERM = 50  # ms
 
-    def __init__(self, name: str, physical_keys: list[IPhysicalKey]):  # , is_part_of_bigger_one: bool):
+    def __init__(self, name: str, physical_keys: list[PhysicalKey]):  # , is_part_of_bigger_one: bool):
         """ a virtual key has one or more physical keys
 
         is_part_of_bigger_one: if the physical keys are a real sub part of another virtual key
@@ -147,7 +156,7 @@ class VirtualKey:
         return self._name
 
     @property
-    def physical_keys(self) -> list[IPhysicalKey]:
+    def physical_keys(self) -> list[PhysicalKey]:
         return self._physical_keys
 
     @property
@@ -269,7 +278,7 @@ class VirtualKey:
 
 class SimpleKey(VirtualKey):
 
-    def __init__(self, name: str, physical_keys: list[IPhysicalKey]):
+    def __init__(self, name: str, physical_keys: list[PhysicalKey]):
         super().__init__(name=name, physical_keys=physical_keys)
 
         self._was_deferred = False  # from last update until now
@@ -300,7 +309,7 @@ TapHoldStateValue = str
 class TapHoldKey(VirtualKey):
     TAP_HOLD_TERM = 200  # ms
 
-    def __init__(self, name: str, physical_keys: list[IPhysicalKey]):
+    def __init__(self, name: str, physical_keys: list[PhysicalKey]):
         super().__init__(name=name, physical_keys=physical_keys)
         self._prev_tap_hold_state = TapHoldState.INACTIVE
         self._cur_tap_hold_state = TapHoldState.INACTIVE
@@ -370,7 +379,7 @@ class TapHoldKey(VirtualKey):
 
 class ModKey(TapHoldKey):
 
-    def __init__(self, name: str, physical_keys: list[IPhysicalKey],
+    def __init__(self, name: str, physical_keys: list[PhysicalKey],
                  mod_key_code: KeyCode):
         super().__init__(name=name, physical_keys=physical_keys)
         self._mod_key_code = mod_key_code
@@ -382,7 +391,7 @@ class ModKey(TapHoldKey):
 
 class LayerKey(TapHoldKey):
 
-    def __init__(self, name: str, physical_keys: list[IPhysicalKey],
+    def __init__(self, name: str, physical_keys: list[PhysicalKey],
                  layer: Layer):
         super().__init__(name=name, physical_keys=physical_keys)
         self._layer = layer
@@ -407,19 +416,19 @@ class VirtualKeyboard:
         self._cur_layer = default_layer
 
     @staticmethod
-    def _get_physical_keys(all_vkeys: list[VirtualKey]) -> list[IPhysicalKey]:
-        pkey_map: dict[str, IPhysicalKey] = {}
+    def _get_physical_keys(all_vkeys: list[VirtualKey]) -> list[PhysicalKey]:
+        pkey_map: dict[str, PhysicalKey] = {}
         for vkey in all_vkeys:
             for pkey in vkey.physical_keys:
                 pkey_map[pkey.name] = pkey
         return list(pkey_map.values())
 
-    def iter_physical_keys(self) -> Iterator[IPhysicalKey]:
+    def iter_physical_keys(self) -> Iterator[PhysicalKey]:
         yield from self._physical_keys
 
-    def update(self, time: TimeInMs) -> Iterator[KeyCmd]:
+    def update(self, time: TimeInMs, pressed_pkeys: set[PinName], pkey_update_time: TimeInMs) -> Iterator[KeyCmd]:
         # update states
-        self._update_physical_keys(time)
+        self._update_physical_keys(pkey_update_time, pressed_pkeys=pressed_pkeys)
 
         changed_virtual_keys = list(self._update_press_state_of_virtual_keys(time))
         # print(f'{time} update: {changed_virtual_keys}')
@@ -431,13 +440,13 @@ class VirtualKeyboard:
 
         # create key commands
         yield from self._create_mod_holding_key_commands()
-        yield from self._create_all_tap_key_commands()
+        yield from self._create_all_tap_key_commands(time=time)
         yield from self._create_simple_key_commands(time)
 
-    def _update_physical_keys(self, time: TimeInMs) -> None:
+    def _update_physical_keys(self, time: TimeInMs, pressed_pkeys: set[PinName]) -> None:
         for pkey in self._physical_keys:
             old_time = pkey.press_time
-            pkey.update(time=time)
+            pkey.update(time=time, will_be_pressed=(pkey.name in pressed_pkeys))
             if pkey.press_time != old_time:
                 print(f'{pkey.name}: {pkey.press_time}')
             if not pkey.is_pressed:
@@ -484,20 +493,21 @@ class VirtualKeyboard:
             if mod_key.is_end_holding():
                 yield KeyCmd(kind=KeyCmdKind.RELEASE, key_code=mod_key.mod_key_code)
 
-    def _create_all_tap_key_commands(self) -> Iterator[KeyCmd]:
-        for key in self._iter_all_tap_keys_where_a_tap_is_detected():
+    def _create_all_tap_key_commands(self, time: TimeInMs) -> Iterator[KeyCmd]:
+        for key in self._iter_all_tap_keys_where_a_tap_is_detected(time=time):
             reaction = self._cur_layer.get(key.name)  # for simplifying, take current layer
             if reaction:
                 yield from reaction.on_press_key_sequence
                 yield from reaction.on_release_key_sequence
 
-    def _iter_all_tap_keys_where_a_tap_is_detected(self) -> Iterator[TapHoldKey]:
+    def _iter_all_tap_keys_where_a_tap_is_detected(self, time: TimeInMs) -> Iterator[TapHoldKey]:
         for key in self._iter_tap_hold_keys():
             if key.prev_tap_hold_state == TapHoldState.UNDECIDED and key.cur_tap_hold_state == TapHoldState.INACTIVE:
                 yield key
             elif key.prev_tap_hold_state == TapHoldState.INACTIVE and key.cur_tap_hold_state == TapHoldState.INACTIVE:
                 # key is pressed and released beneath the COMBO_TERM
-                if key.prev_press_state == VKeyPressState.UNDECIDED and key.cur_press_state == VKeyPressState.RELEASED:
+                if key.prev_press_state == VKeyPressState.UNDECIDED and key.cur_press_state == VKeyPressState.RELEASED \
+                        and time - key.last_press_time < key.TAP_HOLD_TERM:
                     yield key
 
     def _create_simple_key_commands(self, time: TimeInMs) -> Iterator[KeyCmd]:

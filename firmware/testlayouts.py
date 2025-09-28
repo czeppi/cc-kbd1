@@ -1,4 +1,4 @@
-from virtualkeyboard import IPhysicalKey, VirtualKeyboard
+from virtualkeyboard import PhysicalKey, VirtualKeyboard
 
 try:
     from typing import Callable
@@ -15,10 +15,9 @@ except ImportError:
 
 
 from keyboardcreator import KeyboardCreator
-from base import PinName, PinIndex
 
 
-def create_thumb_up_keyboard(physical_key_creator: Callable[[PinName, PinIndex], IPhysicalKey]) -> VirtualKeyboard:
+def create_thumb_up_keyboard() -> VirtualKeyboard:
     pins = {
         'right-thumb-up': GP21,
         'right-thumb-down': GP20,
@@ -38,10 +37,7 @@ def create_thumb_up_keyboard(physical_key_creator: Callable[[PinName, PinIndex],
         'rtm': ['·', '·', '·'],
     }
 
-    creator = KeyboardCreator(physical_key_creator=physical_key_creator,
-                              left_controller_pins=pins,
-                              right_controller_pins={},
-                              virtual_keys=vkeys,
+    creator = KeyboardCreator(virtual_keys=vkeys,
                               virtual_key_order=key_order,
                               layers=layers,
                               modifiers={},

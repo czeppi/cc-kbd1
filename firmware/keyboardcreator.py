@@ -1,5 +1,4 @@
 from base import PinName, PinIndex, VirtualKeyName, KeyCode, KeyName
-from dummyphysicalkey import DummyPhysicalKey
 
 try:
     from typing import Callable, Iterator
@@ -8,7 +7,7 @@ except ImportError:
 
 from adafruit_hid.keycode import Keycode as KC
 
-from virtualkeyboard import VirtualKeyboard, IPhysicalKey, SimpleKey, ModKey, KeyReaction, LayerKey, KeyCmd, KeyCmdKind, VirtualKey
+from virtualkeyboard import VirtualKeyboard, PhysicalKey, SimpleKey, ModKey, KeyReaction, LayerKey, KeyCmd, KeyCmdKind, VirtualKey
 
 MacroName = str  # p.e. 'M3'
 MacroDescription = str
@@ -147,40 +146,24 @@ class KeyboardCreator:
         'RGui': KC.RIGHT_GUI,
     }
 
-    def __init__(self, physical_key_creator: Callable[[PinName, PinIndex], IPhysicalKey],
-                 left_controller_pins: dict[PinName, PinIndex],
-                 right_controller_pins: dict[PinName, PinIndex],
-                 virtual_keys: dict[VirtualKeyName, list[PinName]],
+    def __init__(self, virtual_keys: dict[VirtualKeyName, list[PinName]],
                  virtual_key_order: list[str],
                  layers: dict[VirtualKeyName, list[str]],
                  modifiers: dict[VirtualKeyName, ModKeyName],
                  macros: dict[MacroName, MacroDescription]
                  ):
-        self._physical_key_creator = physical_key_creator
-        self._left_controller_pins = left_controller_pins
-        self._right_controller_pins = right_controller_pins
         self._virtual_keys = virtual_keys
         self._virtual_key_order = [line.split() for line in virtual_key_order]
         self._layers = layers
         self._modifiers = modifiers
         self._macros = macros
 
-        self._physical_key_map: dict[PinName, IPhysicalKey] = {}
+        self._physical_key_map: dict[PinName, PhysicalKey] = {}
         self._reaction_map: dict[ReactionName, ReactionData] = {}
 
     def create(self) -> VirtualKeyboard:
         self._reaction_map = dict(self._create_reaction_map())
-
-        all_controller_pins = self._left_controller_pins | self._right_controller_pins
-        #all_controller_pins = self._right_controller_pins  # todo
-        self._physical_key_map = {
-            pin_name: self._physical_key_creator(pin_name, pin_index)
-                      if pin_name.startswith('right-') and not pin_name.endswith('x')
-                      else DummyPhysicalKey(pin_name)
-            for pin_name, pin_index in all_controller_pins.items()
-        }
-        # for pin_name, pin_index in self._left_controller_pins.items():
-        #     self._physical_key_map[]
+        self._physical_key_map = self._create_physical_key_map()
 
         simple_key_names = set(self._virtual_keys.keys()) - set(self._modifiers.keys()) - set(self._layers.keys())
 
@@ -240,6 +223,14 @@ class KeyboardCreator:
 
             if de_lower_char == 'q':
                 yield '@', ReactionData(key_code=key_code, with_shift=False, with_alt=True)
+
+    def _create_physical_key_map(self) -> dict[PinName, PhysicalKey]:
+        pkey_map: dict[PinName, PhysicalKey] = {}
+        for pkey_names in self._virtual_keys.values():
+            for pkey_name in pkey_names:
+                if pkey_name not in self._physical_key_map:
+                    pkey_map[pkey_name] = PhysicalKey(pkey_name)
+        return pkey_map
 
     def _create_macro(self, macro_desc: str) -> KeyReaction:
         pass  # todo: implement

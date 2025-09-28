@@ -1,12 +1,11 @@
 import unittest
 
 from adafruit_hid.keycode import Keycode as KC
-from dummyphysicalkey import DummyPhysicalKey
-from base import PinName, TimeInMs, KeyCode, KeyName
+from base import PinName, TimeInMs, KeyCode
 from testlayouts import create_thumb_up_keyboard
 
 from virtualkeyboard import VirtualKeyboard, ModKey, SimpleKey, Layer, \
-    KeyReaction, KeyCmd, KeyCmdKind, TapHoldKey, KeySequence, IPhysicalKey, VirtualKey
+    KeyReaction, KeyCmd, KeyCmdKind, TapHoldKey, KeySequence, PhysicalKey, VirtualKey
 
 A_DOWN = KeyCmd(kind=KeyCmdKind.PRESS, key_code=KC.A)
 A_UP = KeyCmd(kind=KeyCmdKind.RELEASE, key_code=KC.A)
@@ -24,19 +23,17 @@ class ThumbUpKeyTest(unittest.TestCase):  # keyboard with only 'thumb-up' key
     _SPACE_UP = KeyCmd(kind=KeyCmdKind.RELEASE, key_code=KC.SPACE)
 
     def setUp(self):
-        self._virt_keyboard = create_thumb_up_keyboard(physical_key_creator=self._create_physical_key)
+        self._virt_keyboard = create_thumb_up_keyboard()
         self._rtu = self._find_pkey('right-thumb-up')
+        self._pressed_pkeys: set[PinName] = set()
+
         VirtualKey.COMBO_TERM = 50
         TapHoldKey.TAP_HOLD_TERM = 200
 
-    @staticmethod
-    def _create_physical_key(key_name: KeyName, serial: int) -> IPhysicalKey:
-        return DummyPhysicalKey(key_name)
-
-    def _find_pkey(self, pkey_name: PinName) -> DummyPhysicalKey | None:
+    def _find_pkey(self, pkey_name: PinName) -> PhysicalKey | None:
         for pkey in self._virt_keyboard.iter_physical_keys():
             if pkey_name == pkey.name:
-                assert isinstance(pkey, DummyPhysicalKey)
+                assert isinstance(pkey, PhysicalKey)
                 return pkey
 
         return None
@@ -71,11 +68,11 @@ class ThumbUpKeyTest(unittest.TestCase):  # keyboard with only 'thumb-up' key
 
     def _step(self, time: TimeInMs, expected_key_seq: KeySequence, press='', release=''):
         if press == 'rtu':
-            self._rtu.press(time=time)
+            self._pressed_pkeys.add(self._rtu.name)
         elif release == 'rtu':
-            self._rtu.release()
+            self._pressed_pkeys.remove(self._rtu.name)
 
-        act_key_seq = list(self._virt_keyboard.update(time=time))
+        act_key_seq = list(self._virt_keyboard.update(time=time, pressed_pkeys=self._pressed_pkeys, pkey_update_time=time))
 
         self.assertEqual(expected_key_seq, act_key_seq)
 
@@ -85,8 +82,8 @@ class TapKeyTest(unittest.TestCase):
     VKEY_B = 'b'
 
     def setUp(self):
-        self._pkey1 = DummyPhysicalKey('A')
-        self._pkey2 = DummyPhysicalKey('B')
+        self._pkey1 = PhysicalKey('A')
+        self._pkey2 = PhysicalKey('B')
 
         self._mod_key = ModKey(name=self.VKEY_A, physical_keys=[self._pkey1],
                                mod_key_code=KC.LEFT_SHIFT)
@@ -97,6 +94,7 @@ class TapKeyTest(unittest.TestCase):
         }
         self._kbd = VirtualKeyboard(simple_keys=[self._simple_key], mod_keys=[self._mod_key], layer_keys=[],
                                     default_layer=default_layer)
+        self._pkey_pressed_keys: set[PinName] = set()
         TapHoldKey.TAP_HOLD_TERM = 200
 
     @staticmethod
@@ -242,18 +240,19 @@ class TapKeyTest(unittest.TestCase):
 
     def _step(self, time: TimeInMs, expected_key_seq: KeySequence,
               press: int | None = None, release: int | None = None) -> None:
+
         if press is not None:
             pkey = self._get_physical_key(serial=press)
-            pkey.press(time=time)
+            self._pkey_pressed_keys.add(pkey.name)
         elif release is not None:
             pkey = self._get_physical_key(serial=release)
-            pkey.release()
+            self._pkey_pressed_keys.remove(pkey.name)
 
-        act_key_seq = list(self._kbd.update(time=time))
+        act_key_seq = list(self._kbd.update(time=time, pressed_pkeys=self._pkey_pressed_keys, pkey_update_time=time))
 
         self.assertEqual(expected_key_seq, act_key_seq)
 
-    def _get_physical_key(self, serial: int) -> DummyPhysicalKey:
+    def _get_physical_key(self, serial: int) -> PhysicalKey:
         if serial == 1:
             return self._pkey1
         else:
