@@ -1,9 +1,11 @@
+from base import VirtualKeyName, TimeInMs, KeyName
+
 try:
     from typing import Optional
 except ImportError:
     pass
 
-from virtualkeyboard import IPhysicalKey, KeyName, TimeInMs
+from virtualkeyboard import IPhysicalKey
 
 
 class DummyPhysicalKey(IPhysicalKey):
@@ -11,7 +13,7 @@ class DummyPhysicalKey(IPhysicalKey):
     def __init__(self, name: KeyName):
         self._name = name
         self._pressed_time: TimeInMs | None = None
-        self._is_bound = False
+        self._bound_vkey_name: VirtualKeyName | None = None
 
     @property
     def name(self) -> str:
@@ -22,11 +24,11 @@ class DummyPhysicalKey(IPhysicalKey):
         return self._pressed_time
 
     @property
-    def is_bound(self) -> bool:
-        return self._is_bound
+    def bound_vkey_name(self) -> VirtualKeyName | None:
+        return self._bound_vkey_name
 
-    def set_bound(self, is_bound: bool) -> None:
-        self._is_bound = is_bound
+    def set_bound_by_vkey(self, vkey_name: VirtualKeyName | None) -> None:
+        self._bound_vkey_name = vkey_name
 
     def update(self, time: TimeInMs) -> None:
         pass

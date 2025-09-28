@@ -1,14 +1,11 @@
 from __future__ import annotations
 
+from base import TimeInMs, KeyCode, VirtualKeyName
+
 try:
     from typing import Iterator
 except ImportError:
     pass
-
-
-TimeInMs = float
-KeyCode = int  # 0 - 255
-KeyName = str  # must be unique
 
 
 class KeyCmdKind:  # enum
@@ -24,6 +21,17 @@ class KeyCmd:
     def __init__(self, kind: KeyCmdKindValue, key_code: KeyCode):
         self.kind = kind
         self.key_code = key_code
+
+    def __str__(self) -> str:
+        if self.kind == KeyCmdKind.PRESS:
+            return f'press({self.key_code})'
+        elif self.kind == KeyCmdKind.RELEASE:
+            return f'release({self.key_code})'
+        else:
+            return f'???({self.key_code})'
+
+    def __repr__(self):
+        return str(self)
 
     def __eq__(self, other: KeyCmd) -> bool:
         return self.kind == other.kind and self.key_code == other.key_code
@@ -62,7 +70,7 @@ class IPhysicalKey:
         raise NotImplementedError()  # abstract
 
     @property
-    def is_bound(self) -> bool:
+    def bound_vkey_name(self) -> VirtualKeyName | None:
         """ when a virtual key is recognized, bound all physical keys
 
         example:
@@ -77,7 +85,7 @@ class IPhysicalKey:
         """
         raise NotImplementedError()  # abstract
 
-    def set_bound(self, is_bound: bool) -> None:
+    def set_bound_by_vkey(self, vkey_name: VirtualKeyName | None) -> None:
         raise NotImplementedError()  # abstract
 
     def update(self, time: TimeInMs) -> None:
@@ -216,7 +224,7 @@ class VirtualKey:
         sorted_pressed_times = sorted(self._iter_pressed_times_of_physical_keys())
 
         prev_state = self._cur_press_state
-        if any(pkey.is_bound for pkey in self._physical_keys):
+        if any(pkey.bound_vkey_name not in [None, self.name] for pkey in self._physical_keys):
             if prev_state == VKeyPressState.UNDECIDED:
                 prev_state = VKeyPressState.RELEASED
 
@@ -237,13 +245,12 @@ class VirtualKey:
         if self.is_begin_pressing(time):
             self._last_press_time = time
             for pkey in self._physical_keys:
-                pkey.set_bound(True)
+                pkey.set_bound_by_vkey(self.name)
 
         if self.is_end_pressing(time):
             self._last_release_time = time
 
         return self._prev_press_state != self.cur_press_state
-
 
     def _iter_pressed_times_of_physical_keys(self) -> Iterator[TimeInMs]:
         for pkey in self._physical_keys:
@@ -282,12 +289,12 @@ class SimpleKey(VirtualKey):
 
 
 class TapHoldState:  # enum
-    INACTIVE = 0  # or RELEASED?
-    UNDECIDED = 1  # or PENDING?
-    HOLD = 2
+    INACTIVE = '-'  # or RELEASED?
+    UNDECIDED = '?'  # or PENDING?
+    HOLD = 'H'
 
 
-TapHoldStateValue = int
+TapHoldStateValue = str
 
 
 class TapHoldKey(VirtualKey):
@@ -347,7 +354,7 @@ class TapHoldKey(VirtualKey):
 
         # check for Permissive Hold (s. https://docs.qmk.fm/tap_hold)
         for key in changed_vkeys:
-            if self.will_be_pressed and key.is_end_pressing(time) and self._last_press_time < key._last_press_time:
+            if key.is_end_pressing(time) and self._last_press_time < key._last_press_time:
                 return TapHoldState.HOLD
 
         return TapHoldState.UNDECIDED
@@ -415,7 +422,7 @@ class VirtualKeyboard:
         self._update_physical_keys(time)
 
         changed_virtual_keys = list(self._update_press_state_of_virtual_keys(time))
-        print(f'{time} update: {changed_virtual_keys}')
+        # print(f'{time} update: {changed_virtual_keys}')
 
         self._update_tap_hold_states(time=time, changed_virtual_keys=changed_virtual_keys)
         self._update_deferred_state_of_simple_keys(time=time)
@@ -429,9 +436,12 @@ class VirtualKeyboard:
 
     def _update_physical_keys(self, time: TimeInMs) -> None:
         for pkey in self._physical_keys:
+            old_time = pkey.press_time
             pkey.update(time=time)
+            if pkey.press_time != old_time:
+                print(f'{pkey.name}: {pkey.press_time}')
             if not pkey.is_pressed:
-                pkey.set_bound(False)
+                pkey.set_bound_by_vkey(None)
 
     def _update_press_state_of_virtual_keys(self, time: TimeInMs) -> Iterator[VirtualKey]:
         for vkey in self._descending_vkeys:  # starting with vkeys with many physical keys
@@ -483,8 +493,11 @@ class VirtualKeyboard:
 
     def _iter_all_tap_keys_where_a_tap_is_detected(self) -> Iterator[TapHoldKey]:
         for key in self._iter_tap_hold_keys():
-            if key.prev_tap_hold_state == TapHoldState.UNDECIDED:
-                if key.cur_tap_hold_state == TapHoldState.INACTIVE:
+            if key.prev_tap_hold_state == TapHoldState.UNDECIDED and key.cur_tap_hold_state == TapHoldState.INACTIVE:
+                yield key
+            elif key.prev_tap_hold_state == TapHoldState.INACTIVE and key.cur_tap_hold_state == TapHoldState.INACTIVE:
+                # key is pressed and released beneath the COMBO_TERM
+                if key.prev_press_state == VKeyPressState.UNDECIDED and key.cur_press_state == VKeyPressState.RELEASED:
                     yield key
 
     def _create_simple_key_commands(self, time: TimeInMs) -> Iterator[KeyCmd]:

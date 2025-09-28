@@ -2,12 +2,11 @@ import unittest
 
 from adafruit_hid.keycode import Keycode as KC
 from dummyphysicalkey import DummyPhysicalKey
-from keyboardcreator import PinName
+from base import PinName, TimeInMs, KeyCode, KeyName
 from testlayouts import create_thumb_up_keyboard
 
-from virtualkeyboard import TimeInMs, VirtualKeyboard, ModKey, SimpleKey, Layer, \
-    KeyReaction, KeyCmd, KeyCmdKind, KeyCode, TapHoldKey, KeySequence, KeyName, IPhysicalKey
-
+from virtualkeyboard import VirtualKeyboard, ModKey, SimpleKey, Layer, \
+    KeyReaction, KeyCmd, KeyCmdKind, TapHoldKey, KeySequence, IPhysicalKey, VirtualKey
 
 A_DOWN = KeyCmd(kind=KeyCmdKind.PRESS, key_code=KC.A)
 A_UP = KeyCmd(kind=KeyCmdKind.RELEASE, key_code=KC.A)
@@ -18,12 +17,17 @@ SHIFT_UP = KeyCmd(kind=KeyCmdKind.RELEASE, key_code=KC.LEFT_SHIFT)
 
 
 class ThumbUpKeyTest(unittest.TestCase):  # keyboard with only 'thumb-up' key
+    """ like real keyboard, but only with the Thumb-Up-key
+
+    """
     _SPACE_DOWN = KeyCmd(kind=KeyCmdKind.PRESS, key_code=KC.SPACE)
     _SPACE_UP = KeyCmd(kind=KeyCmdKind.RELEASE, key_code=KC.SPACE)
 
     def setUp(self):
         self._virt_keyboard = create_thumb_up_keyboard(physical_key_creator=self._create_physical_key)
         self._rtu = self._find_pkey('right-thumb-up')
+        VirtualKey.COMBO_TERM = 50
+        TapHoldKey.TAP_HOLD_TERM = 200
 
     @staticmethod
     def _create_physical_key(key_name: KeyName, serial: int) -> IPhysicalKey:
@@ -37,9 +41,33 @@ class ThumbUpKeyTest(unittest.TestCase):  # keyboard with only 'thumb-up' key
 
         return None
 
-    def test1(self):
-        self._step(10, press='rtu', expected_key_seq=[])
+    def test_press_short1(self):
+        self._step(0, press='rtu', expected_key_seq=[])
         self._step(20, release='rtu', expected_key_seq=[self._SPACE_DOWN, self._SPACE_UP])
+
+    def test_press_short2(self):
+        self._step(00, press='rtu', expected_key_seq=[])
+        self._step(10, expected_key_seq=[])
+        self._step(20, release='rtu', expected_key_seq=[self._SPACE_DOWN, self._SPACE_UP])
+
+    def test_press_longer_as_combo_term1(self):
+        self._step(0, press='rtu', expected_key_seq=[])
+        self._step(70, release='rtu', expected_key_seq=[self._SPACE_DOWN, self._SPACE_UP])
+
+    def test_press_longer_as_combo_term2(self):
+        self._step(0, press='rtu', expected_key_seq=[])
+        self._step(60, expected_key_seq=[])
+        self._step(70, release='rtu', expected_key_seq=[self._SPACE_DOWN, self._SPACE_UP])
+
+    def test_press_longer_as_hold_term1(self):
+        self._step(0, press='rtu', expected_key_seq=[])
+        self._step(300, release='rtu', expected_key_seq=[self._SPACE_DOWN, self._SPACE_UP])  # ???
+
+    def test_press_longer_as_hold_term2(self):
+        self._step(0, press='rtu', expected_key_seq=[])
+        self._step(60, expected_key_seq=[])
+        self._step(270, expected_key_seq=[])
+        self._step(300, release='rtu', expected_key_seq=[])
 
     def _step(self, time: TimeInMs, expected_key_seq: KeySequence, press='', release=''):
         if press == 'rtu':
@@ -60,9 +88,9 @@ class TapKeyTest(unittest.TestCase):
         self._pkey1 = DummyPhysicalKey('A')
         self._pkey2 = DummyPhysicalKey('B')
 
-        self._mod_key = ModKey(name=self.VKEY_A, physical_keys=[self._pkey1], is_part_of_bigger_one=False,
+        self._mod_key = ModKey(name=self.VKEY_A, physical_keys=[self._pkey1],
                                mod_key_code=KC.LEFT_SHIFT)
-        self._simple_key = SimpleKey(name=self.VKEY_B, physical_keys=[self._pkey2], is_part_of_bigger_one=False)
+        self._simple_key = SimpleKey(name=self.VKEY_B, physical_keys=[self._pkey2])
         default_layer: Layer = {
             self.VKEY_A: self._create_key_assignment(KC.A),
             self.VKEY_B: self._create_key_assignment(KC.B),

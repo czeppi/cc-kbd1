@@ -1,3 +1,5 @@
+from base import VirtualKeyName, TimeInMs, KeyName
+
 try:
     from typing import Optional
 except ImportError:
@@ -5,7 +7,7 @@ except ImportError:
 
 from digitalio import DigitalInOut, Direction, Pull
 
-from virtualkeyboard import IPhysicalKey, KeyName, TimeInMs
+from virtualkeyboard import IPhysicalKey
 
 
 class RealPhysicalKey(IPhysicalKey):
@@ -19,7 +21,7 @@ class RealPhysicalKey(IPhysicalKey):
         self._inout.pull = Pull.UP
 
         self._press_time: Optional[TimeInMs] = None
-        self._is_bound = False
+        self._bound_vkey_name: VirtualKeyName | None = None
 
     @property
     def name(self) -> str:
@@ -30,18 +32,18 @@ class RealPhysicalKey(IPhysicalKey):
         return self._press_time
 
     @property
-    def is_bound(self) -> bool:
-        return self._is_bound
+    def bound_vkey_name(self) -> VirtualKeyName | None:
+        return self._bound_vkey_name
 
-    def set_bound(self, is_bound: bool) -> None:
-        self._is_bound = is_bound
+    def set_bound_by_vkey(self, vkey_name: VirtualKeyName | None) -> None:
+        self._bound_vkey_name = vkey_name
 
     def update(self, time: TimeInMs) -> None:
         if self._inout.value:
             self._press_time = None  # not pressed
             if RealPhysicalKey.pressed_key:
                 RealPhysicalKey.should_stop = True
-                print('begin stopping...')
+                #print('begin stopping...')
         else:
             self._press_time = time  # pressed
             RealPhysicalKey.pressed_key = True

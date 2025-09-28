@@ -14,7 +14,8 @@ except ImportError:
     GP21 = 21
 
 
-from keyboardcreator import KeyboardCreator, PinName, PinIndex
+from keyboardcreator import KeyboardCreator
+from base import PinName, PinIndex
 
 
 def create_thumb_up_keyboard(physical_key_creator: Callable[[PinName, PinIndex], IPhysicalKey]) -> VirtualKeyboard:
@@ -31,7 +32,7 @@ def create_thumb_up_keyboard(physical_key_creator: Callable[[PinName, PinIndex],
     key_order = ['rtu', 'rtm', 'rtd']
 
     layers = {
-        '': ['Enter', 'Backspace', 'Space'],
+        '': ['Space', 'Backspace', 'Enter'],
         'rtu': ['·', '·', '·'],
         'rtd': ['·', '·', '·'],
         'rtm': ['·', '·', '·'],

@@ -6,7 +6,8 @@ from dummyphysicalkey import DummyPhysicalKey
 from kbdlayoutdata import LEFT_CONTROLLER_PINS, RIGHT_CONTROLLER_PINS, VIRTUAL_KEYS, VIRTUAL_KEY_ORDER, LAYERS, \
     MODIFIERS, MACROS
 from keyboardcreator import KeyboardCreator
-from virtualkeyboard import IPhysicalKey, KeyName, KeyCmd, KeyCmdKind
+from virtualkeyboard import IPhysicalKey, KeyCmd, KeyCmdKind
+from base import KeyName
 
 
 class KeyboardCreatorTest(unittest.TestCase):

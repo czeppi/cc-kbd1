@@ -106,17 +106,17 @@ VIRTUAL_KEYS = {
 }
 
 VIRTUAL_KEY_ORDER = [
-    'lpu lru lmu liu1 liu2 ltu   rtu riu2 riu1 rmu rru rpu',
-    'lpm lrm lmm lim1 lim2 ltm   rtm rim2 rim1 rmm rrm rpm',
-    'lpd lrd lmd lid1 lid2 ltd   rtd rid2 rid1 rmd rrd rpd',
+    'lpu lru lmu li1u li2u ltu   rtu ri2u ri1u rmu rru rpu',
+    'lpm lrm lmm li1m li2m ltm   rtm ri2m ri1m rmm rrm rpm',
+    'lpd lrd lmd li1d li2d ltd   rtd ri2d ri1d rmd rrd rpd',
 ]
 
 
 LAYERS = {
     '': [
-        'q w e r t Tab     Enter     y u i o p',
-        'a s d f g Del     Backspace h j k l ö',
-        'y x c v b Space   Space     n m , . -',
+        'q w e r t Space   Space      z u i o p',
+        'a s d f g Del     Backspace  h j k l ö',
+        'y x c v b Tab     Enter      n m , . -',
     ],
     'ltu': [
         '· · · · · ·   · @ " { } `',

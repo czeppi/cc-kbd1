@@ -1,3 +1,4 @@
+from base import PinName, PinIndex, VirtualKeyName, KeyCode, KeyName
 from dummyphysicalkey import DummyPhysicalKey
 
 try:
@@ -7,12 +8,8 @@ except ImportError:
 
 from adafruit_hid.keycode import Keycode as KC
 
-from virtualkeyboard import VirtualKeyboard, IPhysicalKey, SimpleKey, ModKey, KeyName, KeyReaction, LayerKey, KeyCode, \
-    KeyCmd, KeyCmdKind, VirtualKey
+from virtualkeyboard import VirtualKeyboard, IPhysicalKey, SimpleKey, ModKey, KeyReaction, LayerKey, KeyCmd, KeyCmdKind, VirtualKey
 
-PinName = str  # p.e. 'left-pinky-down'
-PinIndex = int
-VirtualKeyName = str  # p.e. 'lpd'
 MacroName = str  # p.e. 'M3'
 MacroDescription = str
 ModKeyName = str  # p.e. 'LCtrl'
@@ -177,7 +174,9 @@ class KeyboardCreator:
         all_controller_pins = self._left_controller_pins | self._right_controller_pins
         #all_controller_pins = self._right_controller_pins  # todo
         self._physical_key_map = {
-            pin_name: self._physical_key_creator(pin_name, pin_index) if pin_name == 'right-thumb-down' else DummyPhysicalKey(pin_name)
+            pin_name: self._physical_key_creator(pin_name, pin_index)
+                      if pin_name.startswith('right-') and not pin_name.endswith('x')
+                      else DummyPhysicalKey(pin_name)
             for pin_name, pin_index in all_controller_pins.items()
         }
         # for pin_name, pin_index in self._left_controller_pins.items():
