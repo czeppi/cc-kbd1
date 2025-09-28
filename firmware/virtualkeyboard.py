@@ -447,8 +447,8 @@ class VirtualKeyboard:
         for pkey in self._physical_keys:
             old_time = pkey.press_time
             pkey.update(time=time, will_be_pressed=(pkey.name in pressed_pkeys))
-            if pkey.press_time != old_time:
-                print(f'{pkey.name}: {pkey.press_time}')
+            #if pkey.press_time != old_time:
+            #    print(f'{pkey.name}: {pkey.press_time}')
             if not pkey.is_pressed:
                 pkey.set_bound_by_vkey(None)
 
