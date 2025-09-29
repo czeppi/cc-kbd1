@@ -1,4 +1,4 @@
-from base import PinName, PinIndex, VirtualKeyName, KeyCode, KeyName
+from base import PhysicalKeyName, VirtualKeyName, KeyCode, KeyName
 
 try:
     from typing import Callable, Iterator
@@ -146,7 +146,7 @@ class KeyboardCreator:
         'RGui': KC.RIGHT_GUI,
     }
 
-    def __init__(self, virtual_keys: dict[VirtualKeyName, list[PinName]],
+    def __init__(self, virtual_keys: dict[VirtualKeyName, list[PhysicalKeyName]],
                  virtual_key_order: list[str],
                  layers: dict[VirtualKeyName, list[str]],
                  modifiers: dict[VirtualKeyName, ModKeyName],
@@ -158,7 +158,7 @@ class KeyboardCreator:
         self._modifiers = modifiers
         self._macros = macros
 
-        self._physical_key_map: dict[PinName, PhysicalKey] = {}
+        self._physical_key_map: dict[PhysicalKeyName, PhysicalKey] = {}
         self._reaction_map: dict[ReactionName, ReactionData] = {}
 
     def create(self) -> VirtualKeyboard:
@@ -224,8 +224,8 @@ class KeyboardCreator:
             if de_lower_char == 'q':
                 yield '@', ReactionData(key_code=key_code, with_shift=False, with_alt=True)
 
-    def _create_physical_key_map(self) -> dict[PinName, PhysicalKey]:
-        pkey_map: dict[PinName, PhysicalKey] = {}
+    def _create_physical_key_map(self) -> dict[PhysicalKeyName, PhysicalKey]:
+        pkey_map: dict[PhysicalKeyName, PhysicalKey] = {}
         for pkey_names in self._virtual_keys.values():
             for pkey_name in pkey_names:
                 if pkey_name not in self._physical_key_map:

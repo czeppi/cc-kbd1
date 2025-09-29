@@ -2,7 +2,7 @@ import cProfile
 import pstats
 from typing import Iterator
 
-from base import TimeInMs, PinName
+from base import TimeInMs, PhysicalKeyName
 from kbdlayoutdata import VIRTUAL_KEYS, VIRTUAL_KEY_ORDER, LAYERS, \
     MODIFIERS, MACROS
 from keyboardcreator import KeyboardCreator
@@ -26,7 +26,7 @@ def main():
     cProfile.run('simulate()', 'profiling_results.prof')
     p = pstats.Stats('profiling_results.prof')
     #p.strip_dirs().sort_stats('cumulative').print_stats(100)
-    p.strip_dirs().sort_stats('time').print_stats(100)
+    p.strip_dirs().sort_stats('tottime').print_stats(100)
 
 
 def simulate() -> None:
@@ -35,7 +35,7 @@ def simulate() -> None:
             act_key_seq = list(keyboard.update(time=time, pressed_pkeys=pressed_pkeys, pkey_update_time=time))
 
 
-def iter_steps() -> Iterator[tuple[TimeInMs, set[PinName]]]:
+def iter_steps() -> Iterator[tuple[TimeInMs, set[PhysicalKeyName]]]:
     yield 0, {'left-index-down'}
     yield 30, {'left-index-down'}
     yield 60, set()

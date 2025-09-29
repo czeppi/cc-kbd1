@@ -1,7 +1,7 @@
 import unittest
 
 from adafruit_hid.keycode import Keycode as KC
-from base import PinName, TimeInMs, KeyCode
+from base import PhysicalKeyName, TimeInMs, KeyCode
 from testlayouts import create_thumb_up_keyboard
 
 from virtualkeyboard import VirtualKeyboard, ModKey, SimpleKey, Layer, \
@@ -25,12 +25,12 @@ class ThumbUpKeyTest(unittest.TestCase):  # keyboard with only 'thumb-up' key
     def setUp(self):
         self._virt_keyboard = create_thumb_up_keyboard()
         self._rtu = self._find_pkey('right-thumb-up')
-        self._pressed_pkeys: set[PinName] = set()
+        self._pressed_pkeys: set[PhysicalKeyName] = set()
 
         VirtualKey.COMBO_TERM = 50
         TapHoldKey.TAP_HOLD_TERM = 200
 
-    def _find_pkey(self, pkey_name: PinName) -> PhysicalKey | None:
+    def _find_pkey(self, pkey_name: PhysicalKeyName) -> PhysicalKey | None:
         for pkey in self._virt_keyboard.iter_physical_keys():
             if pkey_name == pkey.name:
                 assert isinstance(pkey, PhysicalKey)
@@ -94,7 +94,7 @@ class TapKeyTest(unittest.TestCase):
         }
         self._kbd = VirtualKeyboard(simple_keys=[self._simple_key], mod_keys=[self._mod_key], layer_keys=[],
                                     default_layer=default_layer)
-        self._pkey_pressed_keys: set[PinName] = set()
+        self._pkey_pressed_keys: set[PhysicalKeyName] = set()
         TapHoldKey.TAP_HOLD_TERM = 200
 
     @staticmethod

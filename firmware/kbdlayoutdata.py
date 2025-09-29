@@ -66,6 +66,23 @@
 #     'right-thumb-down': board.GP20,
 # }
 
+KEY_GROUPS = {  # !! preparing !!
+    'lp': {
+        'lpu': ['left-pinky-up'],
+        'lpm': ['left-pinky-up', 'left-pinky-down'],
+        'lpd': ['left-pinky-down'],
+    },
+    #...
+    'li': {
+        'li1u': ['left-index-up'],
+        'li1m': ['left-index-up', 'left-index-down'],
+        'li1d': ['left-index-down'],
+        'li2u': ['left-index-up', 'left-index-right'],
+        'li2m': ['left-index-right'],
+        'li2d': ['left-index-down', 'left-index-right'],
+    },
+}
+
 VIRTUAL_KEYS = {
     'lpu': ['left-pinky-up'],
     'lpm': ['left-pinky-up', 'left-pinky-down'],

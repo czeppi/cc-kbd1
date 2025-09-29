@@ -12,7 +12,7 @@ from kbdlayoutdata import VIRTUAL_KEYS, VIRTUAL_KEY_ORDER, LAYERS, \
     MODIFIERS, MACROS
 from keyboardcreator import KeyboardCreator
 from virtualkeyboard import VirtualKeyboard, KeyCmdKind, PhysicalKey
-from base import PinName, TimeInMs
+from base import PhysicalKeyName, TimeInMs
 
 TARGET_CPI = 800
 
@@ -178,13 +178,13 @@ def delta(value):
     return (value & 0x7FFF)
 
 
-def get_pressed_pkeys() -> set[PinName]:
+def get_pressed_pkeys() -> set[PhysicalKeyName]:
     return {pkey_name
             for pkey_name, gp in KEY_GP_MAP.items()
             if not gp.value}
 
 
-def update_virtual_keyboard(virt_keyboard: VirtualKeyboard, pressed_pkeys: set[PinName], pkey_update_time: TimeInMs):
+def update_virtual_keyboard(virt_keyboard: VirtualKeyboard, pressed_pkeys: set[PhysicalKeyName], pkey_update_time: TimeInMs):
     time_in_ms = time.monotonic() * 1000
 
     key_seq = list(virt_keyboard.update(time_in_ms, pressed_pkeys=pressed_pkeys, pkey_update_time=pkey_update_time))

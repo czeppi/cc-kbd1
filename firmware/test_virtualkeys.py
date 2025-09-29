@@ -2,7 +2,7 @@ import unittest
 from typing import Iterator
 
 from virtualkeyboard import VirtualKey, PhysicalKey
-from base import TimeInMs, PinName
+from base import TimeInMs, PhysicalKeyName
 
 type PhysicalKeyName = str   # upper case
 type VirtualKeyName = str    # lower case
