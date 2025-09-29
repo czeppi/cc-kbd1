@@ -1,4 +1,4 @@
-from base import PhysicalKeyName, VirtualKeyName, KeyCode, KeyName
+from base import VirtualKeyName, KeyCode, KeyName, PhysicalKeySerial
 
 try:
     from typing import Callable, Iterator
@@ -146,7 +146,7 @@ class KeyboardCreator:
         'RGui': KC.RIGHT_GUI,
     }
 
-    def __init__(self, virtual_keys: dict[VirtualKeyName, list[PhysicalKeyName]],
+    def __init__(self, virtual_keys: dict[VirtualKeyName, list[PhysicalKeySerial]],
                  virtual_key_order: list[str],
                  layers: dict[VirtualKeyName, list[str]],
                  modifiers: dict[VirtualKeyName, ModKeyName],
@@ -158,7 +158,7 @@ class KeyboardCreator:
         self._modifiers = modifiers
         self._macros = macros
 
-        self._physical_key_map: dict[PhysicalKeyName, PhysicalKey] = {}
+        self._physical_key_map: dict[PhysicalKeySerial, PhysicalKey] = {}
         self._reaction_map: dict[ReactionName, ReactionData] = {}
 
     def create(self) -> VirtualKeyboard:
@@ -224,37 +224,37 @@ class KeyboardCreator:
             if de_lower_char == 'q':
                 yield '@', ReactionData(key_code=key_code, with_shift=False, with_alt=True)
 
-    def _create_physical_key_map(self) -> dict[PhysicalKeyName, PhysicalKey]:
-        pkey_map: dict[PhysicalKeyName, PhysicalKey] = {}
-        for pkey_names in self._virtual_keys.values():
-            for pkey_name in pkey_names:
-                if pkey_name not in self._physical_key_map:
-                    pkey_map[pkey_name] = PhysicalKey(pkey_name)
+    def _create_physical_key_map(self) -> dict[PhysicalKeySerial, PhysicalKey]:
+        pkey_map: dict[PhysicalKeySerial, PhysicalKey] = {}
+        for pkey_serials in self._virtual_keys.values():
+            for pkey_serial in pkey_serials:
+                if pkey_serial not in self._physical_key_map:
+                    pkey_map[pkey_serial] = PhysicalKey(pkey_serial)
         return pkey_map
 
     def _create_macro(self, macro_desc: str) -> KeyReaction:
         pass  # todo: implement
 
     def _create_simple_key(self, key_name: VirtualKeyName) -> SimpleKey:
-        pin_names = self._virtual_keys[key_name]
+        pkey_serials = self._virtual_keys[key_name]
 
         return SimpleKey(key_name,
-                         physical_keys=[self._physical_key_map[pin_name] for pin_name in pin_names])
+                         physical_keys=[self._physical_key_map[pkey_serial] for pkey_serial in pkey_serials])
 
     def _create_mod_key(self, key_name: VirtualKeyName, mod_key_name: VirtualKeyName) -> ModKey:
-        pin_names = self._virtual_keys[key_name]
+        pkey_serials = self._virtual_keys[key_name]
         mod_key_code = self._MOD_KEY_CODE_MAP[mod_key_name]
 
         return ModKey(key_name,
-                      physical_keys=[self._physical_key_map[pin_name] for pin_name in pin_names],
+                      physical_keys=[self._physical_key_map[pkey_serial] for pkey_serial in pkey_serials],
                       mod_key_code=mod_key_code)
 
     def _create_layer_key(self, key_name: VirtualKeyName, lines: list[str]) -> LayerKey:
-        pin_names = self._virtual_keys[key_name]
+        pkey_serials = self._virtual_keys[key_name]
         layer = dict(self._create_layer(lines))
 
         return LayerKey(key_name,
-                        physical_keys=[self._physical_key_map[pin_name] for pin_name in pin_names],
+                        physical_keys=[self._physical_key_map[pkey_serial] for pkey_serial in pkey_serials],
                         layer=layer)
 
     @staticmethod

@@ -1,27 +1,29 @@
 import unittest
 from typing import Iterator
 
+from keysdata import LEFT_PINKY_UP
 from virtualkeyboard import VirtualKey, PhysicalKey
-from base import TimeInMs, PhysicalKeyName
+from base import TimeInMs, PhysicalKeySerial, VirtualKeyName
 
-type PhysicalKeyName = str   # upper case
-type VirtualKeyName = str    # lower case
 type VKeyPressStateTransientStr = str  # '-x', 'x-', '-?', '?-', '?x'
 
 
+PKEY_A = 1
+PKEY_B = 2
+
+
 class VirtualKeyTestWithOnePhysicalKey(unittest.TestCase):
-    LEFT_PINKY_UP = 'LeftPinkyUp'
     VKEY_NAME = 'a'
 
     def setUp(self):
-        self._pkey = PhysicalKey(self.LEFT_PINKY_UP)
+        self._pkey = PhysicalKey(LEFT_PINKY_UP)
         self._vkey = VirtualKey(name=self.VKEY_NAME, physical_keys=[self._pkey])
 
     def test_initial(self) -> None:
         vkey = self._vkey
 
         self.assertEqual(self.VKEY_NAME, vkey.name)
-        self.assertEqual([self.LEFT_PINKY_UP], [pkey.name for pkey in self._vkey.physical_keys])
+        self.assertEqual([LEFT_PINKY_UP], [pkey.serial for pkey in self._vkey.physical_keys])
         self.assertFalse(vkey.will_be_pressed)
         self.assertFalse(vkey.was_pressed(time=0))
         self.assertFalse(vkey.is_begin_pressing(time=0))
@@ -140,8 +142,8 @@ class VirtualKeyPressTestBase(unittest.TestCase):
         raise NotImplementedError()  # abstract
 
     def _step(self, time: TimeInMs,
-              press: PhysicalKeyName | None = None,
-              release: PhysicalKeyName | None = None,
+              press: PhysicalKeySerial | None = None,
+              release: PhysicalKeySerial | None = None,
               expect: dict[VirtualKeyName, VKeyPressStateTransientStr] | None = None
               ) -> None:
         # update keys
@@ -162,10 +164,10 @@ class VirtualKeyPressTestBase(unittest.TestCase):
         self.assertEqual(expect, actual_press_transient_strings)
 
     def _update_pkeys(self, time: TimeInMs,
-                      press_pkey: PhysicalKeyName | None,
-                      release_pkey: PhysicalKeyName | None
+                      press_pkey: PhysicalKeySerial | None,
+                      release_pkey: PhysicalKeySerial | None
                       ) -> None:
-        pkey_map = {pkey.name: pkey for pkey in self._iter_pkeys()}
+        pkey_map = {pkey.serial: pkey for pkey in self._iter_pkeys()}
         if press_pkey:
             pkey = pkey_map[press_pkey]
             pkey.update(time, will_be_pressed=True)
@@ -181,7 +183,7 @@ class VirtualKeyPressTestSolo(VirtualKeyPressTestBase):
 
         VirtualKey.COMBO_TERM = 50
 
-        self._pkey1 = PhysicalKey('A')
+        self._pkey1 = PhysicalKey(PKEY_A)
         self._vkey1 = VirtualKey(name='a', physical_keys=[self._pkey1])
 
     def _iter_pkeys(self) -> Iterator[PhysicalKey]:
@@ -191,8 +193,8 @@ class VirtualKeyPressTestSolo(VirtualKeyPressTestBase):
         yield self._vkey1
 
     def test_simple(self):
-        self._step(0, press='A', expect={'a': '-x'})
-        self._step(10, release='A', expect={'a': 'x-'})
+        self._step(0, press=PKEY_A, expect={'a': '-x'})
+        self._step(10, release=PKEY_A, expect={'a': 'x-'})
 
 
 class VirtualKeyPressTest2Combo(VirtualKeyPressTestBase):
@@ -200,8 +202,8 @@ class VirtualKeyPressTest2Combo(VirtualKeyPressTestBase):
     def setUp(self):
         super().setUp()
 
-        self._pkey1 = PhysicalKey('A')
-        self._pkey2 = PhysicalKey('B')
+        self._pkey1 = PhysicalKey(PKEY_A)
+        self._pkey2 = PhysicalKey(PKEY_B)
 
         self._vkey1 = VirtualKey(name='a', physical_keys=[self._pkey1])
         self._vkey1.set_is_part_of_bigger_one(True)
@@ -229,8 +231,8 @@ class VirtualKeyPressTest2Combo(VirtualKeyPressTestBase):
         +--------------|--------------+
            |        |
         """
-        self._step(0, press='A', expect={'a': '-?'})
-        self._step(10, release='A', expect={'a': '?-'})
+        self._step(0, press=PKEY_A, expect={'a': '-?'})
+        self._step(10, release=PKEY_A, expect={'a': '?-'})
 
     # def test_a_fast2(self):
     #     """       COMBO_TERM
@@ -254,9 +256,9 @@ class VirtualKeyPressTest2Combo(VirtualKeyPressTestBase):
         +--------------|----------------+
           |              | |
         """
-        self._step(0, press='A', expect={'a': '-?'})
+        self._step(0, press=PKEY_A, expect={'a': '-?'})
         self._step(60, expect={'a': '?x'})
-        self._step(70, release='A', expect={'a': 'x-'})
+        self._step(70, release=PKEY_A, expect={'a': 'x-'})
 
     def test_a_slow2(self):
         """       COMBO_TERM
@@ -267,8 +269,8 @@ class VirtualKeyPressTest2Combo(VirtualKeyPressTestBase):
         +--------------|----------------+
           |                |
         """
-        self._step(0, press='A', expect={'a': '-?'})
-        self._step(70, release='A', expect={'a': '?-'})
+        self._step(0, press=PKEY_A, expect={'a': '-?'})
+        self._step(70, release=PKEY_A, expect={'a': '?-'})
 
     def test_a_unaware(self) -> None:
         """       COMBO_TERM
@@ -279,8 +281,8 @@ class VirtualKeyPressTest2Combo(VirtualKeyPressTestBase):
         +--------------|--------------+
           |         |
         """
-        self._step(0, press='A')  # no update
-        self._step(30, release='A', expect={})
+        self._step(0, press=PKEY_A)  # no update
+        self._step(30, release=PKEY_A, expect={})
 
     def test_abba_fast(self):
         """       COMBO_TERM
@@ -294,10 +296,10 @@ class VirtualKeyPressTest2Combo(VirtualKeyPressTestBase):
         +--------------|--------------+
           | |      | |
         """
-        self._step(0, press='A', expect={'a': '-?'})
-        self._step(10, press='B', expect={'c': '-x'})  # reset a + b by c
-        self._step(20, release='B', expect={'c': 'x-'})
-        self._step(30, release='A', expect={})
+        self._step(0, press=PKEY_A, expect={'a': '-?'})
+        self._step(10, press=PKEY_B, expect={'c': '-x'})  # reset a + b by c
+        self._step(20, release=PKEY_B, expect={'c': 'x-'})
+        self._step(30, release=PKEY_A, expect={})
 
     def test_abba_slow(self):
         """       COMBO_TERM
@@ -311,10 +313,10 @@ class VirtualKeyPressTest2Combo(VirtualKeyPressTestBase):
         +--------------|--------------+
           |    |           |   |
         """
-        self._step(0, press='A', expect={'a': '-?'})
-        self._step(30, press='B', expect={'c': '-x'})  # reset a + b by c
-        self._step(60, release='B', expect={'c': 'x-'})
-        self._step(80, release='A', expect={})
+        self._step(0, press=PKEY_A, expect={'a': '-?'})
+        self._step(30, press=PKEY_B, expect={'c': '-x'})  # reset a + b by c
+        self._step(60, release=PKEY_B, expect={'c': 'x-'})
+        self._step(80, release=PKEY_A, expect={})
 
     def test_abba3(self):
         """       COMBO_TERM
@@ -328,10 +330,10 @@ class VirtualKeyPressTest2Combo(VirtualKeyPressTestBase):
         +--------------|--------------+
           |              |   |   |
         """
-        self._step(0, press='A', expect={'a': '-?'})
-        self._step(60, press='B', expect={'a': '?x', 'b': '-?'})
-        self._step(80, release='B')
-        self._step(90, release='A',expect={'a': 'x-', 'b': '?-'})
+        self._step(0, press=PKEY_A, expect={'a': '-?'})
+        self._step(60, press=PKEY_B, expect={'a': '?x', 'b': '-?'})
+        self._step(80, release=PKEY_B)
+        self._step(90, release=PKEY_A,expect={'a': 'x-', 'b': '?-'})
 
     def test_abab_fast(self):
         """       COMBO_TERM
@@ -345,10 +347,10 @@ class VirtualKeyPressTest2Combo(VirtualKeyPressTestBase):
         +--------------|--------------+
           |  |    |  |
         """
-        self._step(0, press='A', expect={'a': '-?'})
-        self._step(10, press='B', expect={'c': '-x'})
-        self._step(20, release='A', expect={'c': 'x-'})
-        self._step(30, release='B', expect={})
+        self._step(0, press=PKEY_A, expect={'a': '-?'})
+        self._step(10, press=PKEY_B, expect={'c': '-x'})
+        self._step(20, release=PKEY_A, expect={'c': 'x-'})
+        self._step(30, release=PKEY_B, expect={})
 
     def test_abab_slow(self):
         """       COMBO_TERM1     COMBO_TERM2
@@ -362,7 +364,7 @@ class VirtualKeyPressTest2Combo(VirtualKeyPressTestBase):
         +--------------|--------------|--------------+
           |              |              |  |
         """
-        self._step(0, press='A', expect={'a': '-?'})
-        self._step(60, press='B', expect={'a': '?x', 'b': '-?'})
-        self._step(120, release='A', expect={'a': 'x-', 'b': '?x'})
-        self._step(130, release='B', expect={'b': 'x-'})
+        self._step(0, press=PKEY_A, expect={'a': '-?'})
+        self._step(60, press=PKEY_B, expect={'a': '?x', 'b': '-?'})
+        self._step(120, release=PKEY_A, expect={'a': 'x-', 'b': '?x'})
+        self._step(130, release=PKEY_B, expect={'b': 'x-'})

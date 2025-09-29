@@ -1,4 +1,5 @@
 #import board
+from keysdata import *
 
 # following combination are possible (ChatGPT)
 #
@@ -34,92 +35,62 @@
 # RX: GP5, GP9,  GP21?  # GP21 not in data sheet
 
 
-# LEFT_CONTROLLER_PINS = {
-#     'left-tx': board.GP0,
-#     'left-rx': board.GP1,
-#     'left-index-right': board.GP2,
-#     'left-index-up': board.GP3,
-#     'left-index-down': board.GP4,
-#     'left-middle-up': board.GP10,
-#     'left-middle-down': board.GP11,
-#     'left-ring-up': board.GP12,
-#     'left-ring-down': board.GP13,
-#     'left-pinky-up': board.GP14,
-#     'left-pinky-down': board.GP15,
-#     'left-thumb-up': board.GP5,
-#     'left-thumb-down': board.GP5,
-# }
-#
-# RIGHT_CONTROLLER_PINS = {
-#     'right-tx': board.GP0,
-#     'right-rx': board.GP1,
-#     'right-index-left': board.GP2,
-#     'right-index-up': board.GP3,
-#     'right-index-down': board.GP4,
-#     'right-middle-up': board.GP10,
-#     'right-middle-down': board.GP11,
-#     'right-ring-up': board.GP12,
-#     'right-ring-down': board.GP13,
-#     'right-pinky-up': board.GP14,
-#     'right-pinky-down': board.GP15,
-#     'right-thumb-up': board.GP21,
-#     'right-thumb-down': board.GP20,
+
+# KEY_GROUPS = {  # !! preparing !!
+#     'lp': {
+#         'lpu': ['left-pinky-up'],
+#         'lpm': ['left-pinky-up', 'left-pinky-down'],
+#         'lpd': ['left-pinky-down'],
+#     },
+#     #...
+#     'li': {
+#         'li1u': ['left-index-up'],
+#         'li1m': ['left-index-up', 'left-index-down'],
+#         'li1d': ['left-index-down'],
+#         'li2u': ['left-index-up', 'left-index-right'],
+#         'li2m': ['left-index-right'],
+#         'li2d': ['left-index-down', 'left-index-right'],
+#     },
 # }
 
-KEY_GROUPS = {  # !! preparing !!
-    'lp': {
-        'lpu': ['left-pinky-up'],
-        'lpm': ['left-pinky-up', 'left-pinky-down'],
-        'lpd': ['left-pinky-down'],
-    },
-    #...
-    'li': {
-        'li1u': ['left-index-up'],
-        'li1m': ['left-index-up', 'left-index-down'],
-        'li1d': ['left-index-down'],
-        'li2u': ['left-index-up', 'left-index-right'],
-        'li2m': ['left-index-right'],
-        'li2d': ['left-index-down', 'left-index-right'],
-    },
-}
 
 VIRTUAL_KEYS = {
-    'lpu': ['left-pinky-up'],
-    'lpm': ['left-pinky-up', 'left-pinky-down'],
-    'lpd': ['left-pinky-down'],
-    'lru': ['left-ring-up'],
-    'lrm': ['left-ring-up', 'left-ring-down'],
-    'lrd': ['left-ring-down'],
-    'lmu': ['left-middle-up'],
-    'lmm': ['left-middle-up', 'left-middle-down'],
-    'lmd': ['left-middle-down'],
-    'li1u': ['left-index-up'],
-    'li1m': ['left-index-up', 'left-index-down'],
-    'li1d': ['left-index-down'],
-    'li2u': ['left-index-up', 'left-index-right'],
-    'li2m': ['left-index-right'],
-    'li2d': ['left-index-down', 'left-index-right'],
-    'ltu': ['left-thumb-up'],
-    'ltm': ['left-thumb-up', 'left-thumb-down'],
-    'ltd': ['left-thumb-down'],
-    'rtu': ['right-thumb-up'],
-    'rtm': ['right-thumb-up', 'right-thumb-down'],
-    'rtd': ['right-thumb-down'],
-    'ri2u': ['right-index-up', 'right-index-left'],
-    'ri2m': ['right-index-left'],
-    'ri2d': ['right-index-down', 'right-index-left'],
-    'ri1u': ['right-index-up'],
-    'ri1m': ['right-index-up', 'right-index-down'],
-    'ri1d': ['right-index-down'],
-    'rmu': ['right-middle-up'],
-    'rmm': ['right-middle-up', 'right-middle-down'],
-    'rmd': ['right-middle-down'],
-    'rru': ['right-ring-up'],
-    'rrm': ['right-ring-up', 'right-ring-down'],
-    'rrd': ['right-ring-down'],
-    'rpu': ['right-pinky-up'],
-    'rpm': ['right-pinky-up', 'right-pinky-down'],
-    'rpd': ['right-pinky-down'],
+    'lpu': [LEFT_PINKY_UP],
+    'lpm': [LEFT_PINKY_UP, LEFT_PINKY_DOWN],
+    'lpd': [LEFT_PINKY_DOWN],
+    'lru': [LEFT_RING_UP],
+    'lrm': [LEFT_RING_UP, LEFT_RING_DOWN],
+    'lrd': [LEFT_RING_DOWN],
+    'lmu': [LEFT_MIDDLE_UP],
+    'lmm': [LEFT_MIDDLE_UP, LEFT_MIDDLE_DOWN],
+    'lmd': [LEFT_MIDDLE_DOWN],
+    'li1u': [LEFT_INDEX_UP],
+    'li1m': [LEFT_INDEX_UP, LEFT_INDEX_DOWN],
+    'li1d': [LEFT_INDEX_DOWN],
+    'li2u': [LEFT_INDEX_UP, LEFT_INDEX_RIGHT],
+    'li2m': [LEFT_INDEX_RIGHT],
+    'li2d': [LEFT_INDEX_DOWN, LEFT_INDEX_RIGHT],
+    'ltu': [LEFT_THUMB_UP],
+    'ltm': [LEFT_THUMB_UP, LEFT_THUMB_DOWN],
+    'ltd': [LEFT_THUMB_DOWN],
+    'rtu': [RIGHT_THUMB_UP],
+    'rtm': [RIGHT_THUMB_UP, RIGHT_THUMB_DOWN],
+    'rtd': [RIGHT_THUMB_DOWN],
+    'ri2u': [RIGHT_INDEX_UP, RIGHT_INDEX_LEFT],
+    'ri2m': [RIGHT_INDEX_LEFT],
+    'ri2d': [RIGHT_INDEX_DOWN, RIGHT_INDEX_LEFT],
+    'ri1u': [RIGHT_INDEX_UP],
+    'ri1m': [RIGHT_INDEX_UP, RIGHT_INDEX_DOWN],
+    'ri1d': [RIGHT_INDEX_DOWN],
+    'rmu': [RIGHT_MIDDLE_UP],
+    'rmm': [RIGHT_MIDDLE_UP, RIGHT_MIDDLE_DOWN],
+    'rmd': [RIGHT_MIDDLE_DOWN],
+    'rru': [RIGHT_RING_UP],
+    'rrm': [RIGHT_RING_UP, RIGHT_RING_DOWN],
+    'rrd': [RIGHT_RING_DOWN],
+    'rpu': [RIGHT_PINKY_UP],
+    'rpm': [RIGHT_PINKY_UP, RIGHT_PINKY_DOWN],
+    'rpd': [RIGHT_PINKY_DOWN],
 }
 
 VIRTUAL_KEY_ORDER = [

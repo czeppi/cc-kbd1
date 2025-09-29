@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from base import TimeInMs, KeyCode, VirtualKeyName, PhysicalKeyName
+from base import TimeInMs, KeyCode, VirtualKeyName, PhysicalKeySerial
 
 try:
     from typing import Iterator
@@ -59,14 +59,14 @@ Layer = dict  # dict[KeyName, KeyReaction]
 
 class PhysicalKey:
 
-    def __init__(self, name: PhysicalKeyName):
-        self._name = name
+    def __init__(self, serial: PhysicalKeySerial):
+        self._serial = serial
         self._pressed_time: TimeInMs | None = None
         self._bound_vkey_name: VirtualKeyName | None = None
 
     @property
-    def name(self) -> str:
-        return self._name
+    def serial(self) -> PhysicalKeySerial:
+        return self._serial
 
     @property
     def press_time(self) -> TimeInMs | None:
@@ -128,7 +128,7 @@ class VirtualKey:
 
         self._name = name
         self._physical_keys = physical_keys
-        self._pkey_names = {pkey.name for pkey in physical_keys}
+        self._pkey_names = {pkey.serial for pkey in physical_keys}
         self._is_part_of_bigger_one = False  # set later   # todo: remove
 
         self._last_press_time: TimeInMs = -2000
@@ -408,7 +408,7 @@ class LayerKey(TapHoldKey):
 
 
 class KeyComboGroup:  # todo: implement
-    
+
     def __init__(self):
         self._physical_keys = ...
         self._virtual_keys = ...
@@ -444,13 +444,13 @@ class VirtualKeyboard:
         pkey_map: dict[str, PhysicalKey] = {}
         for vkey in all_vkeys:
             for pkey in vkey.physical_keys:
-                pkey_map[pkey.name] = pkey
+                pkey_map[pkey.serial] = pkey
         return list(pkey_map.values())
 
     def iter_physical_keys(self) -> Iterator[PhysicalKey]:
         yield from self._physical_keys
 
-    def update(self, time: TimeInMs, pressed_pkeys: set[PhysicalKeyName], pkey_update_time: TimeInMs) -> Iterator[KeyCmd]:
+    def update(self, time: TimeInMs, pressed_pkeys: set[PhysicalKeySerial], pkey_update_time: TimeInMs) -> Iterator[KeyCmd]:
         # update states
         self._update_physical_keys(pkey_update_time, pressed_pkeys=pressed_pkeys)
 
@@ -467,10 +467,10 @@ class VirtualKeyboard:
         yield from self._create_all_tap_key_commands(time=time)
         yield from self._create_simple_key_commands(time)
 
-    def _update_physical_keys(self, time: TimeInMs, pressed_pkeys: set[PhysicalKeyName]) -> None:
+    def _update_physical_keys(self, time: TimeInMs, pressed_pkeys: set[PhysicalKeySerial]) -> None:
         for pkey in self._physical_keys:
             old_time = pkey.press_time
-            pkey.update(time=time, will_be_pressed=(pkey.name in pressed_pkeys))
+            pkey.update(time=time, will_be_pressed=(pkey.serial in pressed_pkeys))
             #if pkey.press_time != old_time:
             #    print(f'{pkey.name}: {pkey.press_time}')
             if not pkey.is_pressed:

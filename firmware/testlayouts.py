@@ -1,31 +1,20 @@
-from virtualkeyboard import PhysicalKey, VirtualKeyboard
+from keysdata import RIGHT_THUMB_DOWN, RIGHT_THUMB_UP
+from virtualkeyboard import VirtualKeyboard
 
 try:
     from typing import Callable
 except ImportError:
     pass
 
-try:
-    import board
-    GP20 = board.GP20
-    GP21 = board.GP21
-except ImportError:
-    GP20 = 20
-    GP21 = 21
-
 
 from keyboardcreator import KeyboardCreator
 
 
 def create_thumb_up_keyboard() -> VirtualKeyboard:
-    pins = {
-        'right-thumb-up': GP21,
-        'right-thumb-down': GP20,
-    }
     vkeys = {
-        'rtu': ['right-thumb-up'],
-        'rtm': ['right-thumb-up', 'right-thumb-down'],
-        'rtd': ['right-thumb-down'],
+        'rtu': [RIGHT_THUMB_UP],
+        'rtm': [RIGHT_THUMB_UP, RIGHT_THUMB_DOWN],
+        'rtd': [RIGHT_THUMB_DOWN],
     }
 
     key_order = ['rtu', 'rtm', 'rtd']

@@ -1,7 +1,8 @@
 import unittest
 
 from adafruit_hid.keycode import Keycode as KC
-from base import PhysicalKeyName, TimeInMs, KeyCode
+from base import TimeInMs, KeyCode, PhysicalKeySerial
+from keysdata import RIGHT_THUMB_UP
 from testlayouts import create_thumb_up_keyboard
 
 from virtualkeyboard import VirtualKeyboard, ModKey, SimpleKey, Layer, \
@@ -24,15 +25,15 @@ class ThumbUpKeyTest(unittest.TestCase):  # keyboard with only 'thumb-up' key
 
     def setUp(self):
         self._virt_keyboard = create_thumb_up_keyboard()
-        self._rtu = self._find_pkey('right-thumb-up')
-        self._pressed_pkeys: set[PhysicalKeyName] = set()
+        self._rtu = self._find_pkey(RIGHT_THUMB_UP)
+        self._pressed_pkeys: set[PhysicalKeySerial] = set()
 
         VirtualKey.COMBO_TERM = 50
         TapHoldKey.TAP_HOLD_TERM = 200
 
-    def _find_pkey(self, pkey_name: PhysicalKeyName) -> PhysicalKey | None:
+    def _find_pkey(self, pkey_serial: PhysicalKeySerial) -> PhysicalKey | None:
         for pkey in self._virt_keyboard.iter_physical_keys():
-            if pkey_name == pkey.name:
+            if pkey_serial == pkey.serial:
                 assert isinstance(pkey, PhysicalKey)
                 return pkey
 
@@ -68,9 +69,9 @@ class ThumbUpKeyTest(unittest.TestCase):  # keyboard with only 'thumb-up' key
 
     def _step(self, time: TimeInMs, expected_key_seq: KeySequence, press='', release=''):
         if press == 'rtu':
-            self._pressed_pkeys.add(self._rtu.name)
+            self._pressed_pkeys.add(self._rtu.serial)
         elif release == 'rtu':
-            self._pressed_pkeys.remove(self._rtu.name)
+            self._pressed_pkeys.remove(self._rtu.serial)
 
         act_key_seq = list(self._virt_keyboard.update(time=time, pressed_pkeys=self._pressed_pkeys, pkey_update_time=time))
 
@@ -94,7 +95,7 @@ class TapKeyTest(unittest.TestCase):
         }
         self._kbd = VirtualKeyboard(simple_keys=[self._simple_key], mod_keys=[self._mod_key], layer_keys=[],
                                     default_layer=default_layer)
-        self._pkey_pressed_keys: set[PhysicalKeyName] = set()
+        self._pkey_pressed_keys: set[PhysicalKeySerial] = set()
         TapHoldKey.TAP_HOLD_TERM = 200
 
     @staticmethod
@@ -243,10 +244,10 @@ class TapKeyTest(unittest.TestCase):
 
         if press is not None:
             pkey = self._get_physical_key(serial=press)
-            self._pkey_pressed_keys.add(pkey.name)
+            self._pkey_pressed_keys.add(pkey.serial)
         elif release is not None:
             pkey = self._get_physical_key(serial=release)
-            self._pkey_pressed_keys.remove(pkey.name)
+            self._pkey_pressed_keys.remove(pkey.serial)
 
         act_key_seq = list(self._kbd.update(time=time, pressed_pkeys=self._pkey_pressed_keys, pkey_update_time=time))
 

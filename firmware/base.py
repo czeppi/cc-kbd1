@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-PhysicalKeyName = str  # p.e. 'left-pinky-down'
+PhysicalKeySerial = int  # p.e. LEFT_PINKY_DOWN
+
 VirtualKeyName = str  # p.e. 'lpd'
 TimeInMs = float
 KeyCode = int  # 0 - 255

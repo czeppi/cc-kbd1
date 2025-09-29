@@ -8,28 +8,29 @@ from adafruit_hid.keyboard import Keyboard
 from adafruit_hid.keycode import Keycode
 from adafruit_hid.mouse import Mouse
 
+from keysdata import *
 from kbdlayoutdata import VIRTUAL_KEYS, VIRTUAL_KEY_ORDER, LAYERS, \
     MODIFIERS, MACROS
 from keyboardcreator import KeyboardCreator
-from virtualkeyboard import VirtualKeyboard, KeyCmdKind, PhysicalKey
-from base import PhysicalKeyName, TimeInMs
+from virtualkeyboard import VirtualKeyboard, KeyCmdKind
+from base import TimeInMs, PhysicalKeySerial
 
 TARGET_CPI = 800
 
 KEY_GP_MAP = {
-    'right-tx': DigitalInOut(board.GP0),
-    'right-rx': DigitalInOut(board.GP1),
-    'right-index-left': DigitalInOut(board.GP2),
-    'right-index-up': DigitalInOut(board.GP3),
-    'right-index-down': DigitalInOut(board.GP4),
-    'right-middle-up': DigitalInOut(board.GP10),
-    'right-middle-down': DigitalInOut(board.GP11),
-    'right-ring-up': DigitalInOut(board.GP12),
-    'right-ring-down': DigitalInOut(board.GP13),
-    'right-pinky-up': DigitalInOut(board.GP14),
-    'right-pinky-down': DigitalInOut(board.GP15),
-    'right-thumb-up': DigitalInOut(board.GP21),
-    'right-thumb-down': DigitalInOut(board.GP20),
+    # 'right-tx': DigitalInOut(board.GP0),
+    # 'right-rx': DigitalInOut(board.GP1),
+    RIGHT_INDEX_LEFT: DigitalInOut(board.GP2),
+    RIGHT_INDEX_UP: DigitalInOut(board.GP3),
+    RIGHT_INDEX_DOWN: DigitalInOut(board.GP4),
+    RIGHT_MIDDLE_UP: DigitalInOut(board.GP10),
+    RIGHT_MIDDLE_DOWN: DigitalInOut(board.GP11),
+    RIGHT_RING_UP: DigitalInOut(board.GP12),
+    RIGHT_RING_DOWN: DigitalInOut(board.GP13),
+    RIGHT_PINKY_UP: DigitalInOut(board.GP14),
+    RIGHT_PINKY_DOWN: DigitalInOut(board.GP15),
+    RIGHT_THUMB_UP: DigitalInOut(board.GP21),
+    RIGHT_THUMB_DOWN: DigitalInOut(board.GP20),
 }
 
 # Set up a keyboard device.
@@ -126,7 +127,7 @@ def print_keyboard_info(virt_keyboard: VirtualKeyboard) -> None:
     for vkey in virt_keyboard.iter_all_virtual_keys():
         print(f'{vkey.name} ({str(type(vkey))}): ')
         for pkey in vkey.physical_keys:
-            print(f'- {pkey.name} ({id(pkey)}) ({str(type(pkey))})')
+            print(f'- {pkey.serial} ({id(pkey)}) ({str(type(pkey))})')
 
 
 def init_sensor():
@@ -178,13 +179,13 @@ def delta(value):
     return (value & 0x7FFF)
 
 
-def get_pressed_pkeys() -> set[PhysicalKeyName]:
-    return {pkey_name
-            for pkey_name, gp in KEY_GP_MAP.items()
+def get_pressed_pkeys() -> set[PhysicalKeySerial]:
+    return {pkey_serial
+            for pkey_serial, gp in KEY_GP_MAP.items()
             if not gp.value}
 
 
-def update_virtual_keyboard(virt_keyboard: VirtualKeyboard, pressed_pkeys: set[PhysicalKeyName], pkey_update_time: TimeInMs):
+def update_virtual_keyboard(virt_keyboard: VirtualKeyboard, pressed_pkeys: set[PhysicalKeySerial], pkey_update_time: TimeInMs):
     time_in_ms = time.monotonic() * 1000
 
     key_seq = list(virt_keyboard.update(time_in_ms, pressed_pkeys=pressed_pkeys, pkey_update_time=pkey_update_time))

@@ -2,10 +2,11 @@ import cProfile
 import pstats
 from typing import Iterator
 
-from base import TimeInMs, PhysicalKeyName
+from base import TimeInMs, PhysicalKeySerial
 from kbdlayoutdata import VIRTUAL_KEYS, VIRTUAL_KEY_ORDER, LAYERS, \
     MODIFIERS, MACROS
 from keyboardcreator import KeyboardCreator
+from keysdata import LEFT_INDEX_DOWN
 from virtualkeyboard import VirtualKeyboard
 
 
@@ -35,9 +36,9 @@ def simulate() -> None:
             act_key_seq = list(keyboard.update(time=time, pressed_pkeys=pressed_pkeys, pkey_update_time=time))
 
 
-def iter_steps() -> Iterator[tuple[TimeInMs, set[PhysicalKeyName]]]:
-    yield 0, {'left-index-down'}
-    yield 30, {'left-index-down'}
+def iter_steps() -> Iterator[tuple[TimeInMs, set[PhysicalKeySerial]]]:
+    yield 0, {LEFT_INDEX_DOWN}
+    yield 30, {LEFT_INDEX_DOWN}
     yield 60, set()
 
 
