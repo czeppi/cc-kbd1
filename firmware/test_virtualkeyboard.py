@@ -79,16 +79,18 @@ class ThumbUpKeyTest(unittest.TestCase):  # keyboard with only 'thumb-up' key
 
 
 class TapKeyTest(unittest.TestCase):
-    VKEY_A = 'a'
-    VKEY_B = 'b'
+    PKEY_A = 1
+    PKEY_B = 2
+    VKEY_A = 1
+    VKEY_B = 2
 
     def setUp(self):
-        self._pkey1 = PhysicalKey('A')
-        self._pkey2 = PhysicalKey('B')
+        self._pkey1 = PhysicalKey(self.PKEY_A)
+        self._pkey2 = PhysicalKey(self.PKEY_B)
 
-        self._mod_key = ModKey(name=self.VKEY_A, physical_keys=[self._pkey1],
+        self._mod_key = ModKey(serial=self.VKEY_A, physical_keys=[self._pkey1],
                                mod_key_code=KC.LEFT_SHIFT)
-        self._simple_key = SimpleKey(name=self.VKEY_B, physical_keys=[self._pkey2])
+        self._simple_key = SimpleKey(serial=self.VKEY_B, physical_keys=[self._pkey2])
         default_layer: Layer = {
             self.VKEY_A: self._create_key_assignment(KC.A),
             self.VKEY_B: self._create_key_assignment(KC.B),

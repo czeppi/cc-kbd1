@@ -6,16 +6,16 @@ from adafruit_hid.keycode import Keycode as KC
 from kbdlayoutdata import VIRTUAL_KEYS, VIRTUAL_KEY_ORDER, LAYERS, \
     MODIFIERS, MACROS
 from keyboardcreator import KeyboardCreator
-from keysdata import LEFT_PINKY_UP
+from keysdata import LEFT_PINKY_UP, LPU, NO_KEY
 from virtualkeyboard import KeyCmd, KeyCmdKind
 
 
 class KeyboardCreatorTest(unittest.TestCase):
 
     def test_one_simple_key(self):
-        creator = KeyboardCreator(virtual_keys={'lpu': [LEFT_PINKY_UP]},
-                                  virtual_key_order=['lpu'],
-                                  layers={'': ['a']},
+        creator = KeyboardCreator(virtual_keys={LPU: [LEFT_PINKY_UP]},
+                                  virtual_key_order=[[LPU]],
+                                  layers={NO_KEY: ['a']},
                                   modifiers={},
                                   macros={},
                                   )

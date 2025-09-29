@@ -1,4 +1,4 @@
-from keysdata import RIGHT_THUMB_DOWN, RIGHT_THUMB_UP
+from keysdata import RIGHT_THUMB_DOWN, RIGHT_THUMB_UP, RTU, RTM, RTD, NO_KEY
 from virtualkeyboard import VirtualKeyboard
 
 try:
@@ -12,18 +12,18 @@ from keyboardcreator import KeyboardCreator
 
 def create_thumb_up_keyboard() -> VirtualKeyboard:
     vkeys = {
-        'rtu': [RIGHT_THUMB_UP],
-        'rtm': [RIGHT_THUMB_UP, RIGHT_THUMB_DOWN],
-        'rtd': [RIGHT_THUMB_DOWN],
+        RTU: [RIGHT_THUMB_UP],
+        RTM: [RIGHT_THUMB_UP, RIGHT_THUMB_DOWN],
+        RTD: [RIGHT_THUMB_DOWN],
     }
 
-    key_order = ['rtu', 'rtm', 'rtd']
+    key_order = [[RTU], [RTM], [RTD]]
 
     layers = {
-        '': ['Space', 'Backspace', 'Enter'],
-        'rtu': ['·', '·', '·'],
-        'rtd': ['·', '·', '·'],
-        'rtm': ['·', '·', '·'],
+        NO_KEY: ['Space', 'Backspace', 'Enter'],
+        RTU: ['·', '·', '·'],
+        RTD: ['·', '·', '·'],
+        RTM: ['·', '·', '·'],
     }
 
     creator = KeyboardCreator(virtual_keys=vkeys,

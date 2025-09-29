@@ -107,9 +107,9 @@ def main():
             time.sleep(0.01)  # from ChatGPT
 
         t5 = time.monotonic() * 1000  # in ms
-        print(f'CYCLUS: sensor={sum(sensor_times)/n} ({max(sensor_times)}), '
-              f'gp_times={sum(gp_times)/n} ({max(gp_times)}) '
-              f'keyboard={sum(keyboard_times)/n} ({max(keyboard_times)}), '
+        print(f'CYCLUS: sensor={sum(sensor_times)/n} ({max(sensor_times)}), ' + \
+              f'gp_times={sum(gp_times)/n} ({max(gp_times)}) ' + \
+              f'keyboard={sum(keyboard_times)/n} ({max(keyboard_times)}), ' + \
               f'cyclus={(t5 - t0) / n}')
 
         sensor_times.clear()
@@ -125,7 +125,7 @@ def init_key_gp_map():
 
 def print_keyboard_info(virt_keyboard: VirtualKeyboard) -> None:
     for vkey in virt_keyboard.iter_all_virtual_keys():
-        print(f'{vkey.name} ({str(type(vkey))}): ')
+        print(f'{vkey.serial} ({str(type(vkey))}): ')
         for pkey in vkey.physical_keys:
             print(f'- {pkey.serial} ({id(pkey)}) ({str(type(pkey))})')
 
