@@ -277,10 +277,6 @@ class VirtualKey:
                 all(t2 - t1 < self.COMBO_TERM
                     for t1, t2 in zip(sorted_pressed_times[:-1], sorted_pressed_times[1:])))
 
-    def bigger_vkey_was_pressed(self) -> None:
-        if self._cur_press_state == VKeyPressState.UNDECIDED:
-            self._cur_press_state = VKeyPressState.RELEASED
-
 
 class SimpleKey(VirtualKey):
 

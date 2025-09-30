@@ -33,39 +33,41 @@ KEY_GP_MAP = {
     RIGHT_THUMB_DOWN: DigitalInOut(board.GP20),
 }
 
-# Set up a keyboard device.
+# devices
 kbd_device = Keyboard(usb_hid.devices)
-
-# Type lowercase 'a'. Presses the 'a' key and releases it.
-# kbd.send(Keycode.A)  # OK
 mouse_device = Mouse(usb_hid.devices)
-
-# board.CLK may be board.SCK depending on the board
-# board.D10 is the cs pin
-# sensor = PMW3360.PMW3360(board.CLK, board.MOSI, board.MISO, board.D10)
-# sensor = PMW3389.PMW3389(sck=board.GP6, mosi=board.GP7, miso=board.GP4, cs=board.GP22)
 trackball_sensor = PMW3389.PMW3389(sck=board.GP18, mosi=board.GP19, miso=board.GP16, cs=board.GP22)
 #                                  green            blue             purple
 
-# vin miso mosi sck ss mt gnd rst
-#      4    7    6  22
 
 # Any pin. Goes LOW if motion is detected. More reliable.
 mt_pin = DigitalInOut(board.A0)
 mt_pin.direction = Direction.INPUT
 
-# # button_thumb_down = DigitalInOut(board.GP16)
-# #button_thumb_down = DigitalInOut(board.GP20)
-# button_thumb_down = DigitalInOut(board.GP5)  # not connected - only temporary
-# button_thumb_down.direction = Direction.INPUT
-# button_thumb_down.pull = Pull.UP
-# button_thumb_down_old_value = button_thumb_down.value
+
+# async
 #
-# # button_thumb_up = DigitalInOut(board.GP17)
-# #button_thumb_up = DigitalInOut(board.GP21)
-# button_thumb_up = DigitalInOut(board.GP6)  # not connected - only temporary
-# button_thumb_up.direction = Direction.INPUT
-# button_thumb_up.pull = Pull.UP
+# def fast_thread:
+#     while True:
+#         right_side_events = other_kbd_half_proxy.get_events()
+#         update_mouse(right_side_events.mouse_events)
+#         get_my_half_keyboard_events()
+#         new_kbd_events =
+#         queue.write(time=time, new_kbd_events)
+#
+#
+# def main():
+#     while True:
+#         time_until_next_decision = kbd....
+#         time, read_kbd_events = queue.read(timeout=time_until_next_decision)
+#         if read_kbd_events.is_empty and not kbd.is_time_for_decision(time=time):
+#             continue
+#
+#         pressed_left_vkeys = my_kbd_half.update(time=time, read_kbd_events.pressed_pkeys)
+#         pressed_vkeys = pressed_left_vkeys + right_side_events.kbd_events
+#
+#         key_seq = kbd.update(time=time, pressed_vkeys)
+#         send_key_seq(key_seq)
 
 
 def main():
@@ -198,23 +200,5 @@ def update_virtual_keyboard(virt_keyboard: VirtualKeyboard, pressed_pkeys: set[P
             elif key_cmd.kind == KeyCmdKind.RELEASE:
                 kbd_device.release(key_cmd.key_code)
 
-
-def update_thumb_down_button():
-    global button_thumb_down_old_value
-
-    new_value = button_thumb_down.value
-
-    if new_value != button_thumb_down_old_value:
-        if new_value:  # pressed (HI)
-            kbd_device.send(Keycode.A)
-        button_thumb_down_old_value = button_thumb_down.value
-
-
-class DigitalInput:
-
-    def __init__(self, gp_index: int):
-        self._inout = DigitalInOut(gp_index)
-        self._inout.direction = Direction.INPUT
-        self._inout.pull = Pull.UP
 
 main()
