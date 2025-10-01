@@ -1,3 +1,4 @@
+# physical keys
 LEFT_PINKY_UP = 1
 LEFT_PINKY_DOWN = 2
 LEFT_RING_UP = 3
@@ -21,7 +22,20 @@ RIGHT_RING_DOWN = 20
 RIGHT_PINKY_UP = 21
 RIGHT_PINKY_DOWN = 22
 
+# virtual keys
 NO_KEY = 0
 LPU, LRU, LMU, LI1U, LI2U, LTU,   RTU, RI2U, RI1U, RMU, RRU, RPU = range(1, 13)
 LPM, LRM, LMM, LI1M, LI2M, LTM,   RTM, RI2M, RI1M, RMM, RRM, RPM = range(13, 25)
 LPD, LRD, LMD, LI1D, LI2D, LTD,   RTD, RI2D, RI1D, RMD, RRD, RPD = range(25, 37)
+
+# virtual groups
+LP = 1
+LR = 2
+LM = 3
+LI = 4
+LT = 5
+RT = 6
+RI = 7
+RM = 8
+RR = 9
+RP = 10
