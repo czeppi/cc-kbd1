@@ -1,12 +1,13 @@
 import unittest
 
 from adafruit_hid.keycode import Keycode as KC
-from base import TimeInMs, KeyCode, PhysicalKeySerial
-from keysdata import RIGHT_THUMB_UP
-from testlayouts import create_thumb_up_keyboard
-
-from virtualkeyboard import VirtualKeyboard, ModKey, SimpleKey, Layer, \
-    KeyReaction, KeyCmd, KeyCmdKind, TapHoldKey, KeySequence, PhysicalKey, VirtualKey
+from base import KeyCode, TimeInMs, VirtualKeySerial, PhysicalKeySerial
+from keyboardcreator import KeyboardCreator
+from keyboardhalf import VKeyPressEvent, KeyGroup, \
+    KeyboardHalf
+from virtualkeyboard import KeyCmd, KeyCmdKind, KeyReaction, KeySequence, SimpleKey, TapHoldKey, ModKey, \
+    VirtualKeyboard, Layer
+from keysdata import RIGHT_THUMB_DOWN, RIGHT_THUMB_UP, RTU, RTM, RTD, NO_KEY, RT
 
 A_DOWN = KeyCmd(kind=KeyCmdKind.PRESS, key_code=KC.A)
 A_UP = KeyCmd(kind=KeyCmdKind.RELEASE, key_code=KC.A)
@@ -17,25 +18,18 @@ SHIFT_UP = KeyCmd(kind=KeyCmdKind.RELEASE, key_code=KC.LEFT_SHIFT)
 
 
 class TapKeyTest(unittest.TestCase):
-    PKEY_A = 1
-    PKEY_B = 2
     VKEY_A = 1
     VKEY_B = 2
 
     def setUp(self):
-        self._pkey1 = PhysicalKey(self.PKEY_A)
-        self._pkey2 = PhysicalKey(self.PKEY_B)
-
-        self._mod_key = ModKey(serial=self.VKEY_A, physical_keys=[self._pkey1],
-                               mod_key_code=KC.LEFT_SHIFT)
-        self._simple_key = SimpleKey(serial=self.VKEY_B, physical_keys=[self._pkey2])
+        self._mod_key = ModKey(serial=self.VKEY_A, mod_key_code=KC.LEFT_SHIFT)
+        self._simple_key = SimpleKey(serial=self.VKEY_B)
         default_layer: Layer = {
             self.VKEY_A: self._create_key_assignment(KC.A),
             self.VKEY_B: self._create_key_assignment(KC.B),
         }
-        self._kbd = VirtualKeyboard(simple_keys=[self._simple_key], mod_keys=[self._mod_key], layer_keys=[],
-                                    default_layer=default_layer)
-        self._pkey_pressed_keys: set[PhysicalKeySerial] = set()
+        self._kbd =  VirtualKeyboard(simple_keys=[self._simple_key], mod_keys=[self._mod_key], layer_keys=[],
+                                     default_layer=default_layer)
         TapHoldKey.TAP_HOLD_TERM = 200
 
     @staticmethod
@@ -52,8 +46,8 @@ class TapKeyTest(unittest.TestCase):
         +--------------|--------------+
         =>  b
         """
-        self._step(0, press=2, expected_key_seq=[B_DOWN])
-        self._step(100, release=2, expected_key_seq=[B_UP])
+        self._step(0, press='b', expected_key_seq=[B_DOWN])
+        self._step(100, release='b', expected_key_seq=[B_UP])
 
     def test_aabb_fast(self) -> None:
         """       TAPPING_TERM
@@ -67,10 +61,10 @@ class TapKeyTest(unittest.TestCase):
         +--------------|--------------+
         =>           a   b
         """
-        self._step(0, press=1, expected_key_seq=[])
-        self._step(199, release=1, expected_key_seq=[A_DOWN, A_UP])
-        self._step(210, press=2, expected_key_seq=[B_DOWN])
-        self._step(220, release=2, expected_key_seq=[B_UP])
+        self._step(0, press='a', expected_key_seq=[])
+        self._step(199, release='a', expected_key_seq=[A_DOWN, A_UP])
+        self._step(210, press='b', expected_key_seq=[B_DOWN])
+        self._step(220, release='b', expected_key_seq=[B_UP])
 
     def test_aabb_slow(self) -> None:
         """       TAPPING_TERM
@@ -84,11 +78,11 @@ class TapKeyTest(unittest.TestCase):
         +--------------|--------------+
         =>                 b
         """
-        self._step(0, press=1, expected_key_seq=[])
+        self._step(0, press='a', expected_key_seq=[])
         self._step(201, expected_key_seq=[SHIFT_DOWN])
-        self._step(210, release=1, expected_key_seq=[SHIFT_UP])
-        self._step(220, press=2, expected_key_seq=[B_DOWN])
-        self._step(230, release=2, expected_key_seq=[B_UP])
+        self._step(210, release='a', expected_key_seq=[SHIFT_UP])
+        self._step(220, press='b', expected_key_seq=[B_DOWN])
+        self._step(230, release='b', expected_key_seq=[B_UP])
 
     def test_abba1(self) -> None:
         """       TAPPING_TERM
@@ -102,10 +96,10 @@ class TapKeyTest(unittest.TestCase):
         +--------------|--------------+
         =>         c
         """
-        self._step(0, press=1, expected_key_seq=[])
-        self._step(110, press=2, expected_key_seq=[])
-        self._step(120, release=2, expected_key_seq=[SHIFT_DOWN, B_DOWN, B_UP])
-        self._step(199, release=1, expected_key_seq=[SHIFT_UP])
+        self._step(0, press='a', expected_key_seq=[])
+        self._step(110, press='b', expected_key_seq=[])
+        self._step(120, release='b', expected_key_seq=[SHIFT_DOWN, B_DOWN, B_UP])
+        self._step(199, release='a', expected_key_seq=[SHIFT_UP])
 
     def test_abba2(self) -> None:
         """       TAPPING_TERM
@@ -119,11 +113,11 @@ class TapKeyTest(unittest.TestCase):
         +--------------|--------------+
         =>         c
         """
-        self._step(0, press=1, expected_key_seq=[])
-        self._step(110, press=2, expected_key_seq=[])
-        self._step(120, release=2, expected_key_seq=[SHIFT_DOWN, B_DOWN, B_UP])
+        self._step(0, press='a', expected_key_seq=[])
+        self._step(110, press='b', expected_key_seq=[])
+        self._step(120, release='b', expected_key_seq=[SHIFT_DOWN, B_DOWN, B_UP])
         self._step(201, expected_key_seq=[])
-        self._step(210, release=1, expected_key_seq=[SHIFT_UP])
+        self._step(210, release='a', expected_key_seq=[SHIFT_UP])
 
     def test_abba3(self) -> None:
         """       TAPPING_TERM
@@ -137,11 +131,11 @@ class TapKeyTest(unittest.TestCase):
         +--------------|--------------+
         =>               c
         """
-        self._step(0, press=1, expected_key_seq=[])
+        self._step(0, press='a', expected_key_seq=[])
         self._step(201, expected_key_seq=[SHIFT_DOWN])
-        self._step(210, press=2, expected_key_seq=[B_DOWN])
-        self._step(220, release=2, expected_key_seq=[B_UP])
-        self._step(230, release=1, expected_key_seq=[SHIFT_UP])
+        self._step(210, press='b', expected_key_seq=[B_DOWN])
+        self._step(220, release='b', expected_key_seq=[B_UP])
+        self._step(230, release='a', expected_key_seq=[SHIFT_UP])
 
     def test_abab_fast(self) -> None:
         """       TAPPING_TERM
@@ -155,10 +149,10 @@ class TapKeyTest(unittest.TestCase):
         +--------------|--------------+
         =>        ab
         """
-        self._step(0, press=1, expected_key_seq=[])
-        self._step(110, press=2, expected_key_seq=[])
-        self._step(130, release=1, expected_key_seq=[A_DOWN, A_UP, B_DOWN])
-        self._step(140, release=2, expected_key_seq=[B_UP])
+        self._step(0, press='a', expected_key_seq=[])
+        self._step(110, press='b', expected_key_seq=[])
+        self._step(130, release='a', expected_key_seq=[A_DOWN, A_UP, B_DOWN])
+        self._step(140, release='b', expected_key_seq=[B_UP])
 
     def test_abab_slow(self) -> None:
         """       TAPPING_TERM
@@ -172,57 +166,79 @@ class TapKeyTest(unittest.TestCase):
         +--------------|--------------+
         =>               c
         """
-
-        self._step(0, press=1, expected_key_seq=[])
-        self._step(110, press=2, expected_key_seq=[])
+        self._step(0, press='a', expected_key_seq=[])
+        self._step(110, press='b', expected_key_seq=[])
         self._step(201, expected_key_seq=[SHIFT_DOWN, B_DOWN])
-        self._step(210, release=1, expected_key_seq=[SHIFT_UP])
-        self._step(220, release=2, expected_key_seq=[B_UP])
+        self._step(210, release='a', expected_key_seq=[SHIFT_UP])
+        self._step(220, release='b', expected_key_seq=[B_UP])
 
     def _step(self, time: TimeInMs, expected_key_seq: KeySequence,
-              press: int | None = None, release: int | None = None) -> None:
+              press: str | None = None, release: str | None = None) -> None:
 
+        vkey_events: list[VKeyPressEvent] = []
         if press is not None:
-            pkey = self._get_physical_key(serial=press)
-            self._pkey_pressed_keys.add(pkey.serial)
+            vkey_serial = self._get_vkey_serial_by_name(vkey_name=press)
+            vkey_event = VKeyPressEvent(time, vkey_serial, pressed=True)
+            vkey_events.append(vkey_event)
         elif release is not None:
-            pkey = self._get_physical_key(serial=release)
-            self._pkey_pressed_keys.remove(pkey.serial)
+            vkey_serial = self._get_vkey_serial_by_name(vkey_name=release)
+            vkey_event = VKeyPressEvent(time, vkey_serial, pressed=False)
+            vkey_events.append(vkey_event)
 
-        act_key_seq = list(self._kbd.update(time=time, pressed_pkeys=self._pkey_pressed_keys, pkey_update_time=time))
+        act_key_seq = list(self._kbd.update(time=time, vkey_events=vkey_events))
 
         self.assertEqual(expected_key_seq, act_key_seq)
 
-    def _get_physical_key(self, serial: int) -> PhysicalKey:
-        if serial == 1:
-            return self._pkey1
+    def _get_vkey_serial_by_name(self, vkey_name: str) -> VirtualKeySerial:
+        if vkey_name == 'a':
+            return self.VKEY_A
         else:
-            assert serial == 2
-            return self._pkey2
+            assert vkey_name == 'b'
+            return self.VKEY_B
 
 
 class ThumbUpKeyTest(unittest.TestCase):  # keyboard with only 'thumb-up' key
     """ like real keyboard, but only with the Thumb-Up-key
 
+        This is a simple integration test
     """
     _SPACE_DOWN = KeyCmd(kind=KeyCmdKind.PRESS, key_code=KC.SPACE)
     _SPACE_UP = KeyCmd(kind=KeyCmdKind.RELEASE, key_code=KC.SPACE)
 
     def setUp(self):
-        self._virt_keyboard = create_thumb_up_keyboard()
-        self._rtu = self._find_pkey(RIGHT_THUMB_UP)
+        self._kbd_half = self._create_kbd_half()
+        self._virt_keyboard = self._create_keyboard()
         self._pressed_pkeys: set[PhysicalKeySerial] = set()
 
-        VirtualKey.COMBO_TERM = 50
+        KeyGroup.COMBO_TERM = 50
         TapHoldKey.TAP_HOLD_TERM = 200
 
-    def _find_pkey(self, pkey_serial: PhysicalKeySerial) -> PhysicalKey | None:
-        for pkey in self._virt_keyboard.iter_physical_keys():
-            if pkey_serial == pkey.serial:
-                assert isinstance(pkey, PhysicalKey)
-                return pkey
+    @staticmethod
+    def _create_kbd_half() -> KeyboardHalf:
+        rt_group = KeyGroup(RT, {
+                        RTU: [RIGHT_THUMB_UP],
+                        RTM: [RIGHT_THUMB_UP, RIGHT_THUMB_DOWN],
+                        RTD: [RIGHT_THUMB_DOWN],
+                    })
+        return KeyboardHalf(key_groups=[rt_group])
 
-        return None
+    @staticmethod
+    def _create_keyboard() -> VirtualKeyboard:
+        key_order = [[RTU], [RTM], [RTD]]
+
+        layers = {
+            NO_KEY: ['Space', 'Backspace', 'Enter'],
+            RTU: ['·', '·', '·'],
+            RTD: ['·', '·', '·'],
+            RTM: ['·', '·', '·'],
+        }
+
+        creator = KeyboardCreator(virtual_key_order=key_order,
+                                  layers=layers,
+                                  modifiers={},
+                                  macros={},
+                                  )
+        return creator.create()
 
     def test_press_short1(self):
         self._step(0, press='rtu', expected_key_seq=[])
@@ -254,10 +270,11 @@ class ThumbUpKeyTest(unittest.TestCase):  # keyboard with only 'thumb-up' key
 
     def _step(self, time: TimeInMs, expected_key_seq: KeySequence, press='', release=''):
         if press == 'rtu':
-            self._pressed_pkeys.add(self._rtu.serial)
+            self._pressed_pkeys.add(RIGHT_THUMB_UP)
         elif release == 'rtu':
-            self._pressed_pkeys.remove(self._rtu.serial)
+            self._pressed_pkeys.remove(RIGHT_THUMB_UP)
 
-        act_key_seq = list(self._virt_keyboard.update(time=time, pressed_pkeys=self._pressed_pkeys, pkey_update_time=time))
+        vkey_events = list(self._kbd_half.update(time, cur_pressed_pkeys=self._pressed_pkeys))
+        act_key_seq = list(self._virt_keyboard.update(time=time, vkey_events=vkey_events))
 
         self.assertEqual(expected_key_seq, act_key_seq)

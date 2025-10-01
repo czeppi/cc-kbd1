@@ -1,21 +1,19 @@
 import time
-import board
+
 import PMW3389
-
-from digitalio import DigitalInOut, Direction, Pull
+import board
 import usb_hid
-from adafruit_hid.keyboard import Keyboard
-from adafruit_hid.keycode import Keycode
-from adafruit_hid.mouse import Mouse
-from keyboardcreator2 import KeyboardCreator2
-from keyboardhalf import KeyboardHalf, KeyGroup
+from digitalio import DigitalInOut, Direction, Pull
 
-from keysdata import *
-from kbdlayoutdata import VIRTUAL_KEYS, VIRTUAL_KEY_ORDER, LAYERS, \
+from adafruit_hid.keyboard import Keyboard
+from adafruit_hid.mouse import Mouse
+from base import TimeInMs, PhysicalKeySerial
+from kbdlayoutdata import VIRTUAL_KEY_ORDER, LAYERS, \
     MODIFIERS, MACROS, RIGHT_KEY_GROUPS
 from keyboardcreator import KeyboardCreator
-from virtualkeyboard import VirtualKeyboard, KeyCmdKind, KeySequence
-from base import TimeInMs, PhysicalKeySerial
+from keyboardhalf import KeyboardHalf, KeyGroup
+from keysdata import *
+from virtualkeyboard import KeyCmdKind, KeySequence, VirtualKeyboard
 
 TARGET_CPI = 800
 
@@ -78,20 +76,13 @@ def main():
 
     right_kbd_half = KeyboardHalf(key_groups=[KeyGroup(group_serial, group_data)
                                               for group_serial, group_data in RIGHT_KEY_GROUPS.items()])
-    creator2 = KeyboardCreator2(virtual_key_order=VIRTUAL_KEY_ORDER,
-                                layers=LAYERS,
-                                modifiers=MODIFIERS,
-                                macros=MACROS,
-                                )
+    creator2 = KeyboardCreator(virtual_key_order=VIRTUAL_KEY_ORDER,
+                               layers=LAYERS,
+                               modifiers=MODIFIERS,
+                               macros=MACROS,
+                               )
     virt_keyboard2 = creator2.create()
 
-    creator = KeyboardCreator(virtual_keys=VIRTUAL_KEYS,
-                              virtual_key_order=VIRTUAL_KEY_ORDER,
-                              layers=LAYERS,
-                              modifiers=MODIFIERS,
-                              macros=MACROS,
-                              )
-    virt_keyboard = creator.create()
     # #print_keyboard_info(virt_keyboard)
 
     sensor_times = []
@@ -210,14 +201,6 @@ def get_pressed_pkeys() -> set[PhysicalKeySerial]:
     return {pkey_serial
             for pkey_serial, gp in KEY_GP_MAP.items()
             if not gp.value}
-
-
-def update_virtual_keyboard(virt_keyboard: VirtualKeyboard, pressed_pkeys: set[PhysicalKeySerial], pkey_update_time: TimeInMs):
-    time_in_ms = time.monotonic() * 1000
-
-    key_seq = list(virt_keyboard.update(time_in_ms, pressed_pkeys=pressed_pkeys, pkey_update_time=pkey_update_time))
-
-    send_key_seq(key_seq)
 
 
 def send_key_seq(time: TimeInMs, key_seq: KeySequence):

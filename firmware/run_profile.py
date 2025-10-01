@@ -6,12 +6,13 @@ from base import TimeInMs, PhysicalKeySerial
 from kbdlayoutdata import VIRTUAL_KEY_ORDER, LAYERS, \
     MODIFIERS, MACROS, RIGHT_KEY_GROUPS
 
-from keyboardcreator2 import KeyboardCreator2
-from keyboardhalf import KeyGroup, KeyboardHalf, VirtualKeyboard2
+from keyboardcreator import KeyboardCreator
+from keyboardhalf import KeyGroup, KeyboardHalf
+from virtualkeyboard import VirtualKeyboard
 from keysdata import LEFT_INDEX_DOWN
 
 
-keyboard: VirtualKeyboard2 | None = None
+keyboard: VirtualKeyboard | None = None
 kbd_half: KeyboardHalf | None = None
 
 
@@ -21,11 +22,11 @@ def main():
     kbd_half = KeyboardHalf(key_groups=[KeyGroup(group_serial, group_data)
                                         for group_serial, group_data in RIGHT_KEY_GROUPS.items()])
 
-    creator = KeyboardCreator2(virtual_key_order=VIRTUAL_KEY_ORDER,
-                               layers=LAYERS,
-                               modifiers=MODIFIERS,
-                               macros=MACROS,
-                               )
+    creator = KeyboardCreator(virtual_key_order=VIRTUAL_KEY_ORDER,
+                              layers=LAYERS,
+                              modifiers=MODIFIERS,
+                              macros=MACROS,
+                              )
     keyboard = creator.create()
 
     cProfile.run('simulate()', 'profiling_results.prof')

@@ -1,5 +1,6 @@
-from base import VirtualKeySerial, KeyCode, PhysicalKeySerial
+from base import KeyCode, VirtualKeySerial
 from keysdata import NO_KEY
+from virtualkeyboard import KeyReaction, KeyCmd, KeyCmdKind, SimpleKey, ModKey, LayerKey, VirtualKeyboard
 
 try:
     from typing import Callable, Iterator
@@ -7,8 +8,6 @@ except ImportError:
     pass
 
 from adafruit_hid.keycode import Keycode as KC
-
-from virtualkeyboard import VirtualKeyboard, PhysicalKey, SimpleKey, ModKey, KeyReaction, LayerKey, KeyCmd, KeyCmdKind, VirtualKey
 
 MacroName = str  # p.e. 'M3'
 MacroDescription = str
@@ -147,26 +146,26 @@ class KeyboardCreator:
         'RGui': KC.RIGHT_GUI,
     }
 
-    def __init__(self, virtual_keys: dict[VirtualKeySerial, list[PhysicalKeySerial]],
-                 virtual_key_order: list[list[VirtualKeySerial]],
+    def __init__(self, virtual_key_order: list[list[VirtualKeySerial]],
                  layers: dict[VirtualKeySerial, list[str]],
                  modifiers: dict[VirtualKeySerial, ModKeyName],
                  macros: dict[MacroName, MacroDescription]
                  ):
-        self._virtual_keys = virtual_keys
         self._virtual_key_order = virtual_key_order
         self._layers = layers
         self._modifiers = modifiers
         self._macros = macros
 
-        self._physical_key_map: dict[PhysicalKeySerial, PhysicalKey] = {}
         self._reaction_map: dict[ReactionName, ReactionData] = {}
 
     def create(self) -> VirtualKeyboard:
         self._reaction_map = dict(self._create_reaction_map())
-        self._physical_key_map = self._create_physical_key_map()
 
-        simple_key_serials = set(self._virtual_keys.keys()) - set(self._modifiers.keys()) - set(self._layers.keys())
+        all_vkey_serials = {vkey_serial
+                            for vkey_row in self._virtual_key_order
+                            for vkey_serial in vkey_row}
+
+        simple_key_serials = all_vkey_serials - set(self._modifiers.keys()) - set(self._layers.keys())
 
         self._macros = {
             macro_name: self._create_macro(macro_desc)
@@ -179,9 +178,6 @@ class KeyboardCreator:
                     for vkey_serial, mod_key_name in self._modifiers.items()]
         layer_keys = [self._create_layer_key(vkey_serial, lines)
                       for vkey_serial, lines in self._layers.items() if vkey_serial != NO_KEY]
-
-        all_vkeys = simple_keys + mod_keys + layer_keys
-        self._build_dependencies(all_vkeys)
 
         return VirtualKeyboard(
             simple_keys=simple_keys,
@@ -225,50 +221,22 @@ class KeyboardCreator:
             if de_lower_char == 'q':
                 yield '@', ReactionData(key_code=key_code, with_shift=False, with_alt=True)
 
-    def _create_physical_key_map(self) -> dict[PhysicalKeySerial, PhysicalKey]:
-        pkey_map: dict[PhysicalKeySerial, PhysicalKey] = {}
-        for pkey_serials in self._virtual_keys.values():
-            for pkey_serial in pkey_serials:
-                if pkey_serial not in self._physical_key_map:
-                    pkey_map[pkey_serial] = PhysicalKey(pkey_serial)
-        return pkey_map
-
     def _create_macro(self, macro_desc: str) -> KeyReaction:
         pass  # todo: implement
 
-    def _create_simple_key(self, vkey_serial: VirtualKeySerial) -> SimpleKey:
-        pkey_serials = self._virtual_keys[vkey_serial]
-
-        return SimpleKey(vkey_serial,
-                         physical_keys=[self._physical_key_map[pkey_serial] for pkey_serial in pkey_serials])
+    @staticmethod
+    def _create_simple_key(vkey_serial: VirtualKeySerial) -> SimpleKey:
+        return SimpleKey(vkey_serial)
 
     def _create_mod_key(self, vkey_serial: VirtualKeySerial, mod_key_name: ModKeyName) -> ModKey:
-        pkey_serials = self._virtual_keys[vkey_serial]
         mod_key_code = self._MOD_KEY_CODE_MAP[mod_key_name]
 
-        return ModKey(vkey_serial,
-                      physical_keys=[self._physical_key_map[pkey_serial] for pkey_serial in pkey_serials],
-                      mod_key_code=mod_key_code)
+        return ModKey(vkey_serial, mod_key_code=mod_key_code)
 
     def _create_layer_key(self, vkey_serial: VirtualKeySerial, lines: list[str]) -> LayerKey:
-        pkey_serials = self._virtual_keys[vkey_serial]
         layer = dict(self._create_layer(lines))
 
-        return LayerKey(vkey_serial,
-                        physical_keys=[self._physical_key_map[pkey_serial] for pkey_serial in pkey_serials],
-                        layer=layer)
-
-    @staticmethod
-    def _build_dependencies(all_vkeys: list[VirtualKey]) -> None:
-        sorted_vkeys = sorted(all_vkeys, key=lambda vkey: len(vkey.physical_keys))
-
-        n = len(sorted_vkeys)
-        for i in range(n - 1):
-            vkey1 = sorted_vkeys[i]
-            for j in range(i + 1, n):
-                vkey2 = sorted_vkeys[j]
-                if vkey1 < vkey2:
-                    vkey1.set_is_part_of_bigger_one(True)
+        return LayerKey(vkey_serial, layer=layer)
 
     def _create_layer(self, lines: list[str]) -> Iterator[tuple[VirtualKeySerial, KeyReaction]]:
         assert len(lines) == len(self._virtual_key_order)
