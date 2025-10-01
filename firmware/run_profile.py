@@ -3,25 +3,29 @@ import pstats
 from typing import Iterator
 
 from base import TimeInMs, PhysicalKeySerial
-from kbdlayoutdata import VIRTUAL_KEYS, VIRTUAL_KEY_ORDER, LAYERS, \
-    MODIFIERS, MACROS
-from keyboardcreator import KeyboardCreator
+from kbdlayoutdata import VIRTUAL_KEY_ORDER, LAYERS, \
+    MODIFIERS, MACROS, RIGHT_KEY_GROUPS
+
+from keyboardcreator2 import KeyboardCreator2
+from keyboardhalf import KeyGroup, KeyboardHalf, VirtualKeyboard2
 from keysdata import LEFT_INDEX_DOWN
-from virtualkeyboard import VirtualKeyboard
 
 
-keyboard: VirtualKeyboard | None = None
+keyboard: VirtualKeyboard2 | None = None
+kbd_half: KeyboardHalf | None = None
 
 
 def main():
-    global keyboard
+    global keyboard, kbd_half
 
-    creator = KeyboardCreator(virtual_keys=VIRTUAL_KEYS,
-                              virtual_key_order=VIRTUAL_KEY_ORDER,
-                              layers=LAYERS,
-                              modifiers=MODIFIERS,
-                              macros=MACROS,
-                              )
+    kbd_half = KeyboardHalf(key_groups=[KeyGroup(group_serial, group_data)
+                                        for group_serial, group_data in RIGHT_KEY_GROUPS.items()])
+
+    creator = KeyboardCreator2(virtual_key_order=VIRTUAL_KEY_ORDER,
+                               layers=LAYERS,
+                               modifiers=MODIFIERS,
+                               macros=MACROS,
+                               )
     keyboard = creator.create()
 
     cProfile.run('simulate()', 'profiling_results.prof')
@@ -31,9 +35,10 @@ def main():
 
 
 def simulate() -> None:
-    for _ in range(1000):
+    for _ in range(10000):
         for time, pressed_pkeys in iter_steps():
-            act_key_seq = list(keyboard.update(time=time, pressed_pkeys=pressed_pkeys, pkey_update_time=time))
+            vkey_events = list(kbd_half.update(time=time, cur_pressed_pkeys=pressed_pkeys))
+            act_key_seq = list(keyboard.update(time=time, vkey_events=vkey_events))
 
 
 def iter_steps() -> Iterator[tuple[TimeInMs, set[PhysicalKeySerial]]]:

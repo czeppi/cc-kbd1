@@ -7,12 +7,14 @@ import usb_hid
 from adafruit_hid.keyboard import Keyboard
 from adafruit_hid.keycode import Keycode
 from adafruit_hid.mouse import Mouse
+from keyboardcreator2 import KeyboardCreator2
+from keyboardhalf import KeyboardHalf, KeyGroup
 
 from keysdata import *
 from kbdlayoutdata import VIRTUAL_KEYS, VIRTUAL_KEY_ORDER, LAYERS, \
-    MODIFIERS, MACROS
+    MODIFIERS, MACROS, RIGHT_KEY_GROUPS
 from keyboardcreator import KeyboardCreator
-from virtualkeyboard import VirtualKeyboard, KeyCmdKind
+from virtualkeyboard import VirtualKeyboard, KeyCmdKind, KeySequence
 from base import TimeInMs, PhysicalKeySerial
 
 TARGET_CPI = 800
@@ -74,6 +76,15 @@ def main():
     init_sensor()
     init_key_gp_map()
 
+    right_kbd_half = KeyboardHalf(key_groups=[KeyGroup(group_serial, group_data)
+                                              for group_serial, group_data in RIGHT_KEY_GROUPS.items()])
+    creator2 = KeyboardCreator2(virtual_key_order=VIRTUAL_KEY_ORDER,
+                                layers=LAYERS,
+                                modifiers=MODIFIERS,
+                                macros=MACROS,
+                                )
+    virt_keyboard2 = creator2.create()
+
     creator = KeyboardCreator(virtual_keys=VIRTUAL_KEYS,
                               virtual_key_order=VIRTUAL_KEY_ORDER,
                               layers=LAYERS,
@@ -85,7 +96,9 @@ def main():
 
     sensor_times = []
     gp_times = []
-    keyboard_times = []
+    kbd_half_times = []
+    vkbd_times = []
+    keysend_times = []
     n = 100
 
     while True:
@@ -102,21 +115,33 @@ def main():
             t3 = time.monotonic() * 1000  # in ms
             gp_times.append(t3 - t2)
 
-            update_virtual_keyboard(virt_keyboard, pressed_pkeys=pressed_pkeys, pkey_update_time=pkey_update_time)
+            vkey_events = list(right_kbd_half.update(time=pkey_update_time, cur_pressed_pkeys=pressed_pkeys))
             t4 = time.monotonic() * 1000  # in ms
-            keyboard_times.append(t4 - t3)
+            kbd_half_times.append(t4 - t3)
+
+            key_seq = list(virt_keyboard2.update(time=pkey_update_time, vkey_events=vkey_events))
+            t5 = time.monotonic() * 1000  # in ms
+            vkbd_times.append(t5 - t4)
+
+            send_key_seq(pkey_update_time, key_seq)
+            t6 = time.monotonic() * 1000  # in ms
+            keysend_times.append(t6 - t5)
 
             time.sleep(0.01)  # from ChatGPT
 
-        t5 = time.monotonic() * 1000  # in ms
+        t7 = time.monotonic() * 1000  # in ms
         print(f'CYCLUS: sensor={sum(sensor_times)/n} ({max(sensor_times)}), ' + \
               f'gp_times={sum(gp_times)/n} ({max(gp_times)}) ' + \
-              f'keyboard={sum(keyboard_times)/n} ({max(keyboard_times)}), ' + \
-              f'cyclus={(t5 - t0) / n}')
+              f'kbd_half={sum(kbd_half_times)/n} ({max(kbd_half_times)}), ' + \
+              f'virt_kbd={sum(vkbd_times)/n} ({max(vkbd_times)}), ' + \
+              f'key_send={sum(keysend_times)/n} ({max(keysend_times)}), ' + \
+              f'cyclus={(t7 - t0) / n}')
 
         sensor_times.clear()
         gp_times.clear()
-        keyboard_times.clear()
+        kbd_half_times.clear()
+        vkbd_times.clear()
+        keysend_times.clear()
 
 
 def init_key_gp_map():
@@ -192,13 +217,19 @@ def update_virtual_keyboard(virt_keyboard: VirtualKeyboard, pressed_pkeys: set[P
 
     key_seq = list(virt_keyboard.update(time_in_ms, pressed_pkeys=pressed_pkeys, pkey_update_time=pkey_update_time))
 
-    if key_seq:
-        print(f'{int(time_in_ms)} key_seq: {key_seq}')
-        for key_cmd in key_seq:
-            if key_cmd.kind == KeyCmdKind.PRESS:
-                kbd_device.press(key_cmd.key_code)
-            elif key_cmd.kind == KeyCmdKind.RELEASE:
-                kbd_device.release(key_cmd.key_code)
+    send_key_seq(key_seq)
+
+
+def send_key_seq(time: TimeInMs, key_seq: KeySequence):
+    if len(key_seq) == 0:
+        return
+
+    print(f'{int(time)} key_seq: {key_seq}')
+    for key_cmd in key_seq:
+        if key_cmd.kind == KeyCmdKind.PRESS:
+            kbd_device.press(key_cmd.key_code)
+        elif key_cmd.kind == KeyCmdKind.RELEASE:
+            kbd_device.release(key_cmd.key_code)
 
 
 main()

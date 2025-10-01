@@ -199,6 +199,7 @@ class TapKeyTest(unittest.TestCase):
 class ThumbUpKeyTest(unittest.TestCase):  # keyboard with only 'thumb-up' key
     """ like real keyboard, but only with the Thumb-Up-key
 
+        This is a simple integration test
     """
     _SPACE_DOWN = KeyCmd(kind=KeyCmdKind.PRESS, key_code=KC.SPACE)
     _SPACE_UP = KeyCmd(kind=KeyCmdKind.RELEASE, key_code=KC.SPACE)

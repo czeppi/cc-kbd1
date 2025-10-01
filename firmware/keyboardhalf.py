@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from typing import Iterator
+try:
+    from typing import Iterator
+except ImportError:
+    pass
 
 from base import PhysicalKeySerial, TimeInMs, VirtualKeySerial, KeyGroupSerial, KeyCode
 from virtualkeyboard import KeyCmd, KeyCmdKind
