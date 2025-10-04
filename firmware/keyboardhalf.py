@@ -58,9 +58,8 @@ class KeyboardHalf:
 
 class VKeyPressEvent:
 
-    def __init__(self, time: TimeInMs, vkey_serial: VirtualKeySerial, pressed: bool):
+    def __init__(self, vkey_serial: VirtualKeySerial, pressed: bool):
         # public
-        self.time = time
         self.vkey_serial = vkey_serial
         self.pressed = pressed
 
@@ -135,7 +134,7 @@ class KeyGroup:
             self._time_of_decision = None  # ERROR => fix it
             return
 
-        yield VKeyPressEvent(time, self._undecided_vkey, pressed=True)
+        yield VKeyPressEvent(self._undecided_vkey, pressed=True)
         self._bound_pkeys |= self._vkey2pkeys[self._undecided_vkey]
         self._pressed_vkeys.add(self._undecided_vkey)
         self._undecided_vkey = None
@@ -159,7 +158,7 @@ class KeyGroup:
             self._time_of_decision = time + self.COMBO_TERM
         else:
             # press detected
-            yield VKeyPressEvent(time, vkey_serial=vkey_serial, pressed=True)
+            yield VKeyPressEvent(vkey_serial=vkey_serial, pressed=True)
             self._bound_pkeys |= unbound_pressed_pkeys
             self._pressed_vkeys.add(vkey_serial)
             self._undecided_vkey = None
@@ -173,7 +172,7 @@ class KeyGroup:
         for vkey_serial in self._pressed_vkeys.copy():
             pkeys = self._vkey2pkeys[vkey_serial]
             if (pkeys & released_pkeys) != frozenset():
-                yield VKeyPressEvent(time, vkey_serial=vkey_serial, pressed=False)
+                yield VKeyPressEvent(vkey_serial=vkey_serial, pressed=False)
                 self._bound_pkeys -= self._vkey2pkeys[vkey_serial]
                 self._pressed_vkeys.remove(vkey_serial)
 
@@ -182,8 +181,8 @@ class KeyGroup:
             vkey_serial = self._undecided_vkey
             pkeys = self._vkey2pkeys[vkey_serial]
             if (pkeys & released_pkeys) != frozenset():
-                yield VKeyPressEvent(time, vkey_serial=vkey_serial, pressed=True)
-                yield VKeyPressEvent(time, vkey_serial=vkey_serial, pressed=False)
+                yield VKeyPressEvent(vkey_serial=vkey_serial, pressed=True)
+                yield VKeyPressEvent(vkey_serial=vkey_serial, pressed=False)
                 self._undecided_vkey = None
                 self._time_of_decision = None
             else:

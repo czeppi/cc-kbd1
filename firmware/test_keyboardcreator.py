@@ -19,7 +19,7 @@ class KeyboardCreatorTest(unittest.TestCase):
                                   )
         keyboard = creator.create()
 
-        vkey_event = VKeyPressEvent(time=210, vkey_serial=LPU, pressed=True)
+        vkey_event = VKeyPressEvent(vkey_serial=LPU, pressed=True)
         act_key_seq = list(keyboard.update(time=210, vkey_events=[vkey_event]))
         expected_key_seq = [KeyCmd(kind=KeyCmdKind.PRESS, key_code=KC.A)]
         self.assertEqual(expected_key_seq, act_key_seq)
@@ -32,7 +32,7 @@ class KeyboardCreatorTest(unittest.TestCase):
                                   )
         keyboard = creator.create()
 
-        vkey_event = VKeyPressEvent(time=210, vkey_serial=LPU, pressed=True)
+        vkey_event = VKeyPressEvent(vkey_serial=LPU, pressed=True)
         act_key_seq = list(keyboard.update(time=210, vkey_events=[vkey_event]))   # todo: not working with 10
 
         expected_key_seq = [KeyCmd(kind=KeyCmdKind.PRESS, key_code=KC.Q)]

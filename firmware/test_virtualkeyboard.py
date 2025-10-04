@@ -178,11 +178,11 @@ class TapKeyTest(unittest.TestCase):
         vkey_events: list[VKeyPressEvent] = []
         if press is not None:
             vkey_serial = self._get_vkey_serial_by_name(vkey_name=press)
-            vkey_event = VKeyPressEvent(time, vkey_serial, pressed=True)
+            vkey_event = VKeyPressEvent(vkey_serial, pressed=True)
             vkey_events.append(vkey_event)
         elif release is not None:
             vkey_serial = self._get_vkey_serial_by_name(vkey_name=release)
-            vkey_event = VKeyPressEvent(time, vkey_serial, pressed=False)
+            vkey_event = VKeyPressEvent(vkey_serial, pressed=False)
             vkey_events.append(vkey_event)
 
         act_key_seq = list(self._kbd.update(time=time, vkey_events=vkey_events))

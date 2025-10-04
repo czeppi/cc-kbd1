@@ -116,7 +116,7 @@ class VirtualKeyboard:
         yield from self._update_by_time(time)
 
         for vkey_event in self._sorted_vkey_events(vkey_events):
-            yield from self._update_vkey_event(vkey_event)
+            yield from self._update_vkey_event(time, vkey_event)
 
         self._next_decision_time = min((vkey.last_press_time + TapHoldKey.TAP_HOLD_TERM
                                         for vkey in self._undecided_tap_hold_keys),
@@ -158,8 +158,7 @@ class VirtualKeyboard:
             for simple_key in simple_keys_to_remove:
                 self._deferred_simple_keys.remove(simple_key)
 
-    def _update_vkey_event(self, vkey_event: VKeyPressEvent) -> Iterator[KeyCmd]:
-        time = vkey_event.time
+    def _update_vkey_event(self, time: TimeInMs, vkey_event: VKeyPressEvent) -> Iterator[KeyCmd]:
         vkey_serial = vkey_event.vkey_serial
         vkey = self._all_keys[vkey_serial]
 

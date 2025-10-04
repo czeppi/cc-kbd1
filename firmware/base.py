@@ -7,3 +7,4 @@ KeyGroupSerial = int  # pw. LP (left pinky), RI (right index)
 TimeInMs = float
 KeyCode = int  # 0 - 255
 KeyName = str  # in layer desription in kbdlayoutdata.py (must be unique)
+
