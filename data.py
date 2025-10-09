@@ -43,3 +43,19 @@ FLAT_HEAD_SCREW_M6 = FlatHeadScrew(
     radius = 3.0,
     head_set_insert_radius = 3.3  # 3.6 < x < 4.0
 )
+
+
+@dataclass
+class HexagonScrew:
+    head_radius: float
+    head_height: float
+    radius: float  
+    head_set_insert_radius: float
+
+
+HEXAGON_SCREW_M6 = HexagonScrew(
+    head_radius = 5.65,     # measured 5.625
+    head_height = 4.4,    # measured 4.33
+    radius = 3.0,  # measure 2.94 
+    head_set_insert_radius = 3.3  # 3.6 < x < 4.0  (s. FLAT_HEAD_SCREW_M6)
+)

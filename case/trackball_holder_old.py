@@ -1,7 +1,7 @@
 import copy
 from build123d import offset, export_stl, loft, make_face, extrude
 from build123d import Box, Cylinder, Part, Pos, Rot, Sphere
-from ocp_vscode import show_object
+from ocp_vscode import show
 
 from base import TOLERANCE, OUTPUT_DPATH
 from thumb_base import THICKNESS, SLOT_LEN, EPS
@@ -11,7 +11,7 @@ def main():
     creator = TrackballHolderCreator()
     holder = creator.create()
     export_stl(holder, OUTPUT_DPATH / 'trackball-holder.stl')
-    show_object(holder)
+    show(holder)
 
 
 class TrackballHolderCreator:

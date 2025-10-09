@@ -2,7 +2,7 @@ import math
 from typing import Iterator
 from build123d import offset, export_stl, loft, make_face, extrude
 from build123d import Box, Cylinder, Part, Pos, Rot, Sphere, CounterBoreHole, Sketch, Polyline, Plane, Solid, Location
-from ocp_vscode import show_object
+from ocp_vscode import show
 
 from base import OUTPUT_DPATH
 from finger_parts_new import SwitchPairHolderCreator, XY
@@ -14,7 +14,7 @@ WRITE_ENABLED = True
 def main():
     creator = ThumbSwitchHolderCreator()
     holder = creator.create()
-    show_object(holder)
+    show(holder)
 
 
 class ThumbSwitchHolderCreator(SwitchPairHolderCreator):

@@ -13,7 +13,7 @@ from finger_parts_common import LEFT_RIGHT_BORDER, CUT_WIDTH, SwitchPairHolderFi
 import data
 
 from build123d import Box, Circle, Compound, CounterBoreHole, Hole, Cylinder, Edge, Part, Plane, Polyline, Pos, Rot, Location, Sketch, Solid, Sphere, Vector, export_stl, extrude, make_face, sweep
-from ocp_vscode import show_object
+from ocp_vscode import show
 
 
 type XY = tuple[float, float]
@@ -39,12 +39,12 @@ class SwitchHolderCorrection:
 def main():
     creator = CaseAssemblyCreator()
     case_assembly = creator.create()
-    show_object(case_assembly)
+    show(case_assembly)
 
 
 def create_switch_pair_holder():
     holder = SwitchPairHolderCreator().create()
-    show_object(holder)
+    show(holder)
 
 
 class CaseAssemblyCreator:

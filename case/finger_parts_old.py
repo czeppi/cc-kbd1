@@ -5,7 +5,7 @@ from pathlib import Path
 
 from build123d import mirror, make_face, extrude, loft, export_stl
 from build123d import Polyline, Plane, Part, Pos, Rot, Box, Compound, Rectangle, Sketch, BaseSketchObject, Cylinder
-from ocp_vscode import show_object
+from ocp_vscode import show
 from case.finger_parts_common import LEFT_RIGHT_BORDER
 from finger_parts_common import BACK_BORDER, CUT_WIDTH, TILT_ANGLE, SwitchPairHolderFingerLocations, SwitchPairHolderSwinger
 from finger_parts_new import CaseAssemblyCreator
@@ -41,7 +41,7 @@ def main():
     creator.save(OUTPUT_DPATH)   
     export_stl(case_assembly, OUTPUT_DPATH / 'case_assembly.stl')
 
-    show_object(case_assembly)
+    show(case_assembly)
 
 
 class FinalAssemblyCreator:

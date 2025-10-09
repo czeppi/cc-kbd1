@@ -11,7 +11,7 @@ sys.path.append(str(Path(__file__).absolute().parent.parent))
 from build123d import export_stl, make_face, extrude, offset, mirror
 from build123d import Part, Pos, Curve, Cylinder, Solid, Line, EllipticalCenterArc, AngularDirection, Edge, RadiusArc, Kind, Box, Plane
 from build123d import Compound
-from ocp_vscode import show_object
+from ocp_vscode import show
 
 from base import OUTPUT_DPATH
 
@@ -97,7 +97,7 @@ def main():
 def create_switch_socket():
     socket = SwitchSocketCreator().create()
     export_stl(socket, OUTPUT_DPATH / 'hot-swap-socket.stl')
-    show_object(socket)
+    show(socket)
 
 
 class SwitchSocketCreator:

@@ -5,7 +5,7 @@ from typing import Iterator
 from pathlib import Path
 from build123d import offset, export_stl, loft, chamfer
 from build123d import Box, Cylinder, Part, Rectangle, Pos, Rot, Kind, Sketch, Plane, Axis
-from ocp_vscode import show_object
+from ocp_vscode import show
 
 from base import STUD_DISTANCE, STUD_HEIGHT, STUD_RADIUS, STUD_CHAMFER_LEN, OUTPUT_DPATH
 
@@ -44,7 +44,7 @@ def main():
     foot = creator.create()
 
     export_stl(foot, OUTPUT_DPATH / 'skeleton-foot.stl')
-    show_object(foot)
+    show(foot)
 
 
 class SkeletonFootCreator:

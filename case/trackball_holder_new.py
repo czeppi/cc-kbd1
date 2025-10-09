@@ -4,7 +4,7 @@ from typing import Iterator
 from pathlib import Path
 from build123d import offset, export_stl, loft, make_face, extrude
 from build123d import Box, Cylinder, Part, Pos, Rot, Sphere, CounterBoreHole
-from ocp_vscode import show_object
+from ocp_vscode import show
 
 sys.path.append(str(Path(__file__).absolute().parent.parent))
 
@@ -20,7 +20,7 @@ WRITE_ENABLED = True
 def main():
     creator = TrackballHolderCreator()
     holder = creator.create()
-    show_object(holder)
+    show(holder)
 
 
 class TrackballHolderCreator:

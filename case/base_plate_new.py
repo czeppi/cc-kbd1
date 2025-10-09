@@ -10,7 +10,7 @@ from case.base import OUTPUT_DPATH
 import data
 
 from build123d import Box, Circle, Compound, CounterBoreHole, Hole, Cylinder, Edge, Part, Plane, Polyline, Pos, Rot, Sketch, Solid, Sphere, Vector, export_stl, extrude, make_face, sweep
-from ocp_vscode import show_object
+from ocp_vscode import show
 
 
 WRITE_ENABLED = True
@@ -27,18 +27,18 @@ def main():
 
 def _create_circle_base_plate() -> Part:
     part = CircleBasePlateCreator().create()
-    show_object(part)
+    show(part)
 
 
 def _create_finger_sphere() -> Part:
     part = FingerSphereCreator().create()
-    show_object(part)
+    show(part)
 
 
 def _create_assembly() -> Compound:
     creator = BaseAssemblyCreator()
     assembly = creator.create()
-    show_object(assembly)
+    show(assembly)
 
 
 class BaseAssemblyCreator:

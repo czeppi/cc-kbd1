@@ -2,7 +2,7 @@ import math
 from typing import Iterator
 from build123d import offset, export_stl, loft, make_face, extrude, chamfer, fillet
 from build123d import Box, Cylinder, Part, Rectangle, Pos, Rot, Sketch, Plane, Align, Polyline, Axis, GeomType
-from ocp_vscode import show_object
+from ocp_vscode import show
 
 from base import STUD_HEIGHT, STUD_RADIUS, STUD_DISTANCE, STUD_CHAMFER_LEN, TOLERANCE, OUTPUT_DPATH
 from thumb_base import SLOT_LEN, EPS, THICKNESS
@@ -21,7 +21,7 @@ def main():
     middle_part = middle_creator.create()
     export_stl(middle_part, OUTPUT_DPATH / 'thumb-middle-part.stl')
 
-    show_object(middle_part)
+    show(middle_part)
 
 
 class ThumbFootCreator:

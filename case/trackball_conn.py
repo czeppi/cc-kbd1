@@ -1,7 +1,7 @@
 import copy
 from build123d import offset, export_stl, loft, make_face, extrude
 from build123d import Box, Part, Pos
-from ocp_vscode import show_object
+from ocp_vscode import show
 
 from base import TOLERANCE, OUTPUT_DPATH
 from case.trackball_holder_old import TrackballHolderCreator
@@ -14,7 +14,7 @@ def main():
     creator = TrackballConnCreator()
     trackball_connector = creator.create()
     export_stl(trackball_connector, OUTPUT_DPATH / 'trackball-connector.stl')
-    show_object(trackball_connector)
+    show(trackball_connector)
 
 
 class TrackballConnCreator:

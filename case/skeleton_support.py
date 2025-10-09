@@ -3,7 +3,7 @@ import copy
 from pathlib import Path
 from build123d import mirror, extrude, offset, export_stl, make_face
 from build123d import Box, Cylinder, Part, Rectangle, Pos, Rot, Kind, Polygon, Polyline, Plane, Wedge, Axis, RigidJoint, Location, Circle, Align, Triangle
-from ocp_vscode import show_object
+from ocp_vscode import show
 
 
 TOLERANCE = 0.1
@@ -28,7 +28,7 @@ def main():
     support = creator.create()
     
     #export_stl(support, OUTPUT_DPATH / 'skeleton-support.stl')
-    show_object(support)
+    show(support)
 
 
 class SkeletonSupportCreator:

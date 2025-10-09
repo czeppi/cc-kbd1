@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 from build123d import export_stl
 from build123d import Box, Part, Pos, Rot, Cylinder, CounterBoreHole, Sphere
-from ocp_vscode import show_object
+from ocp_vscode import show
 
 sys.path.append(str(Path(__file__).absolute().parent.parent))
 
@@ -14,9 +14,9 @@ WRITE_ENABLED = True
 
 
 def main():
-    #part = MountingPostCreator().create()
-    part = HalfPipeCreator().create()
-    show_object(part)
+    part = MountingPostCreator().create()
+    #part = HalfPipeCreator().create()
+    show(part)
 
 
 class MountingPostCreator:

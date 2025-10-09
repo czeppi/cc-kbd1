@@ -1,7 +1,7 @@
 import copy
 from build123d import offset, export_stl, loft, make_face, extrude
 from build123d import Box, Part, Pos, Axis
-from ocp_vscode import show_object
+from ocp_vscode import show
 
 from base import TOLERANCE, OUTPUT_DPATH
 from case.thumb_holder_old import ThumbMiddlePartCreator
@@ -13,7 +13,7 @@ def main():
     creator = ThumbKeysHolderCreator()
     holder = creator.create()
     export_stl(holder, OUTPUT_DPATH / 'thumb-switches-holder.stl')
-    show_object(holder)
+    show(holder)
 
 
 class ThumbKeysHolderCreator:
