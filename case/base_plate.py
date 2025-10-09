@@ -1,17 +1,9 @@
-import sys
 import math
-from pathlib import Path
 from typing import Iterator
-import copy
-
-sys.path.append(str(Path(__file__).absolute().parent.parent))
-
-from case.base import OUTPUT_DPATH
-import data
-
-from build123d import Box, Circle, Compound, CounterBoreHole, Hole, Cylinder, Edge, Part, Plane, Polyline, Pos, Rot, Sketch, Solid, Sphere, Vector, export_stl, extrude, make_face, sweep
 from ocp_vscode import show
 
+import data
+from base import OUTPUT_DPATH
 
 WRITE_ENABLED = True
 

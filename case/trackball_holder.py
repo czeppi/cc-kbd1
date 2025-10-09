@@ -1,16 +1,13 @@
 import copy
-import sys
 from typing import Iterator
-from pathlib import Path
-from build123d import offset, export_stl, loft, make_face, extrude
+
 from build123d import Box, Cylinder, Part, Pos, Rot, Sphere, CounterBoreHole
+from build123d import export_stl
 from ocp_vscode import show
 
-sys.path.append(str(Path(__file__).absolute().parent.parent))
-
+import data
 from base import TOLERANCE, OUTPUT_DPATH
 from thumb_base import THICKNESS
-import data
 
 type XY = tuple[float, float]
 
@@ -163,7 +160,7 @@ class TrackballHolderCreator:
         box = Pos(Z=-h/2) * Box(x_len, y_len, h)
 
         # heat inserter set holes
-        switch_holder_width = 16  # s. finger_parts_new.py
+        switch_holder_width = 16  # s. finger_parts.py
         screw_dy = 5  # from center
         heat_inserter_hole = self._create_switch_holder_heat_inserter_hole()
 

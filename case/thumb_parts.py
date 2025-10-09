@@ -1,4 +1,4 @@
-from trackball_holder_new import TrackballHolderCreator
+from trackball_holder import TrackballHolderCreator
 from ocp_vscode import show
 
 

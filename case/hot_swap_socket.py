@@ -1,20 +1,14 @@
-from typing import Iterator
 import copy
-import sys
-from enum import Enum
-from pathlib import Path
 import math
 from dataclasses import dataclass
+from typing import Iterator
 
-sys.path.append(str(Path(__file__).absolute().parent.parent))
-
+from build123d import Part, Pos, Curve, Cylinder, Solid, Line, EllipticalCenterArc, AngularDirection, Edge, RadiusArc, \
+    Kind, Box, Plane
 from build123d import export_stl, make_face, extrude, offset, mirror
-from build123d import Part, Pos, Curve, Cylinder, Solid, Line, EllipticalCenterArc, AngularDirection, Edge, RadiusArc, Kind, Box, Plane
-from build123d import Compound
 from ocp_vscode import show
 
 from base import OUTPUT_DPATH
-
 
 """
     links:

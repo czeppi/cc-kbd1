@@ -1,14 +1,11 @@
 import copy
-import sys
 import math
 from pathlib import Path
 from typing import Iterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-sys.path.append(str(Path(__file__).absolute().parent.parent))
-
-from case.base import OUTPUT_DPATH
-from case.hot_swap_socket import HotSwapSocketCreator3, hot_swap_socket_data, kailh_choc_v1_data
+from base import OUTPUT_DPATH
+from hot_swap_socket import HotSwapSocketCreator3, hot_swap_socket_data, kailh_choc_v1_data
 from finger_parts_common import LEFT_RIGHT_BORDER, CUT_WIDTH, SwitchPairHolderFingerLocations
 import data
 

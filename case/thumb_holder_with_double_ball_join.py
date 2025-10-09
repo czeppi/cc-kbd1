@@ -1,14 +1,9 @@
-import sys
-from pathlib import Path
 from build123d import export_stl
-from build123d import Box, Part, Pos, Rot, Cylinder, CounterBoreHole, Sphere, Circle, Rectangle, revolve, Axis, Plane, make_face, Polyline, Line, split, RegularPolygon, extrude, Compound
+from build123d import Box, Part, Pos, Rot, Cylinder, Sphere, Circle, revolve, Axis, Plane, RegularPolygon, extrude, Compound
 from ocp_vscode import show
-
-sys.path.append(str(Path(__file__).absolute().parent.parent))
 
 from base import OUTPUT_DPATH
 import data
-
 
 type mm = float
 

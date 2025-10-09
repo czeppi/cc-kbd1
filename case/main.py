@@ -1,6 +1,6 @@
-from finger_parts_new import SkeletonCreator
-from case.finger_parts_new import SwitchPairHolderCreator
-from case.trackball_holder_new import TrackballHolderCreator
+from finger_parts import SkeletonCreator
+from finger_parts import SwitchPairHolderCreator
+from trackball_holder import TrackballHolderCreator
 from ocp_vscode import show
 from base import OUTPUT_DPATH
 

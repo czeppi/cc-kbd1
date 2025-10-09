@@ -1,14 +1,9 @@
-import sys
-from pathlib import Path
-from build123d import export_stl
 from build123d import Box, Part, Pos, Rot, Cylinder, CounterBoreHole, Sphere
+from build123d import export_stl
 from ocp_vscode import show
 
-sys.path.append(str(Path(__file__).absolute().parent.parent))
-
-from base import OUTPUT_DPATH
 import data
-
+from base import OUTPUT_DPATH
 
 WRITE_ENABLED = True
 

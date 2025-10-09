@@ -1,12 +1,13 @@
 import math
 from typing import Iterator
-from build123d import offset, export_stl, loft, make_face, extrude
-from build123d import Box, Cylinder, Part, Pos, Rot, Sphere, CounterBoreHole, Sketch, Polyline, Plane, Solid, Location
+
+from build123d import Box, Part, Pos, Rot, Sketch, Polyline, Plane, Solid, Location
+from build123d import export_stl, make_face
 from ocp_vscode import show
 
 from base import OUTPUT_DPATH
-from finger_parts_new import SwitchPairHolderCreator, XY
-from hot_swap_socket import HotSwapSocketCreator3, hot_swap_socket_data, kailh_choc_v1_data
+from finger_parts import SwitchPairHolderCreator, XY
+from hot_swap_socket import hot_swap_socket_data
 
 WRITE_ENABLED = True
 
