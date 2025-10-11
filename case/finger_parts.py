@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from base import OUTPUT_DPATH
 from hot_swap_socket import HotSwapSocketCreator3, hot_swap_socket_data, kailh_choc_v1_data
 from finger_parts_common import LEFT_RIGHT_BORDER, CUT_WIDTH, SwitchPairHolderFingerLocations
+from double_ball_join import FingerDoubleBallJoinCreator
 import data
 
 from build123d import Box, Circle, Compound, CounterBoreHole, Hole, Cylinder, Edge, Part, Plane, Polyline, Pos, Rot, Location, Sketch, Solid, Sphere, Vector, export_stl, extrude, make_face, sweep
@@ -550,8 +551,8 @@ class SkeletonCreator:
     BASE_HEIGHT = 3
     BASE_Z_OFFSET = 0.5  # make base position a little bit above the tube
     CABLE_HOLE_RADIUS = 3
-    SPHERE_RADIUS = 12
-    SPHERE_HANDLE_RADIUS = 7
+    SPHERE_RADIUS = FingerDoubleBallJoinCreator.SPHERE_RADIUS
+    SPHERE_HANDLE_RADIUS = FingerDoubleBallJoinCreator.HANDLE_RADIUS
 
     def __init__(self):
         self._dz = SwitchPairHolderCreator.MIDDLE_PART_HEIGHT_AT_CENTER \

@@ -2,28 +2,19 @@ from build123d import export_stl
 from build123d import Box, Part, Pos, Rot, Cylinder, Sphere, Circle, revolve, Axis, Plane, RegularPolygon, extrude, Compound
 from ocp_vscode import show
 
-from base import OUTPUT_DPATH
+from base import OUTPUT_DPATH, mm, Degree
 import data
 
-type mm = float
 
 
 WRITE_ENABLED = True
 
 
 def main():
-    #part = DoubleBallJoinCreator(name='thumb-join', sphere_radius=10, sphere_dist=40, holder_radius=6).create()
-    part = HolderWingCreator().create()
+    #part = ThumbDoubleBallJoinCreator().create()
+    part = ThumbHolderWingCreator().create()
     show(part)
 
-
-class DoubleSphereHolderCreator:
-    BELT_FACTOR = 0.5  # radius at belt / sphere radius
-
-    def __init__(self, sphere_radius: mm, sphere_dist: mm):
-        self._sphere_radius = sphere_radius
-        self._sphere_dist = sphere_dist
-        
 
 class DoubleBallJoinCreator:
     BELT_FACTOR = 0.8  # = belt_radius / sphere_radius
@@ -33,11 +24,11 @@ class DoubleBallJoinCreator:
     HALVES_GAP = 2.0  # cut a litte more than a half for better tension
     TOLERANCE = 0.1  # make sphere + cylinder a litte bigger    
 
-    def __init__(self, name: str, sphere_radius: mm, sphere_dist: mm, holder_radius: mm):
-        self._name = name
+    def __init__(self, name_prefix: str, sphere_radius: mm, sphere_dist: mm, handle_radius: mm):
+        self._name_prefix = name_prefix
         self._sphere_radius = sphere_radius
         self._sphere_dist = sphere_dist
-        self._holder_radius = holder_radius
+        self._handle_radius = handle_radius
     
     def create(self) -> Compound:
         holder = self._create_holder()
@@ -49,8 +40,8 @@ class DoubleBallJoinCreator:
         holder_half2.label = 'half2'
 
         if WRITE_ENABLED:
-            export_stl(holder_half1, OUTPUT_DPATH / 'double-ball-holder1.stl')
-            export_stl(holder_half2, OUTPUT_DPATH / 'double-ball-holder2.stl')
+            export_stl(holder_half1, OUTPUT_DPATH / f'{self._name_prefix}-double-ball-holder1.stl')
+            export_stl(holder_half2, OUTPUT_DPATH / f'{self._name_prefix}-double-ball-holder2.stl')
 
         return Compound(label="double-ball-join", children=[holder_half1, holder_half2])
     
@@ -67,7 +58,7 @@ class DoubleBallJoinCreator:
         lower_inner_sphere = Pos(0, 0, -d_2) * Sphere(self._sphere_radius)
 
         z3 = d_2 + 3
-        holder_r = self._holder_radius + 0.5  # add some tolerance
+        holder_r = self._handle_radius + 0.5  # add some tolerance
         upper_sphere_holder_neg_cylinder = Pos(0, 0, z3) * Rot(X=90) * Cylinder(holder_r, height=2 * r1)
         lower_sphere_holder_neg_cylinder = Pos(0, 0, -z3) * Rot(X=90) * Cylinder(holder_r, height=2 * r1)
         upper_sphere_holder_neg_box = Pos(0, 0, 50 + z3) * Box(2 * holder_r, 100, 100)
@@ -131,7 +122,46 @@ class DoubleBallJoinCreator:
         return (d**2 + 4 * (b**2 - r**2)) / (8 * (r - b))    
     
 
+class ThumbDoubleBallJoinCreator(DoubleBallJoinCreator):
+    NAME_PREFIX = 'thumb'
+    SPHERE_RADIUS = 10
+    HANDLE_RADIUS = 6
+
+    def __init__(self):
+        super().__init__(name_prefix=self.NAME_PREFIX, sphere_radius=self.SPHERE_RADIUS, handle_radius=self.HANDLE_RADIUS)
+
+
+class FingerDoubleBallJoinCreator(DoubleBallJoinCreator):
+    NAME_PREFIX = 'finger'
+    SPHERE_RADIUS = 12
+    HANDLE_RADIUS = 7
+
+    def __init__(self):
+        super().__init__(name_prefix=self.NAME_PREFIX, sphere_radius=self.SPHERE_RADIUS, handle_radius=self.HANDLE_RADIUS)
+
+
 class HolderWingCreator:
+    TOLERANCE = 0.1
+
+    def _create(self, name_prefix: str, wing_length: mm, wing_width: mm, wing_height: mm, screw: data.HexagonScrew, 
+                heat_set_length: mm, screw_hole_length: mm, hole_cylinder_thickness: mm) -> Part:
+        r1 = screw.head_set_insert_radius
+        r2 = screw.radius + self.TOLERANCE
+        r3 = r1 + hole_cylinder_thickness
+        dz = wing_width / 2
+        hole_outer_cylinder = Pos(Z=dz) * Cylinder(r3, wing_width)
+        heat_set_hole = Pos(Z=heat_set_length / 2) * Cylinder(r1, heat_set_length)
+        screw_hole = Pos(Z=screw_hole_length / 2) * Cylinder(r2, screw_hole_length)
+        wing_box = Pos(Z=dz) * Box(2 * (wing_length + r3), wing_height, wing_width)
+        part = wing_box + hole_outer_cylinder - screw_hole - heat_set_hole
+
+        if WRITE_ENABLED:
+            export_stl(part, OUTPUT_DPATH / f'{name_prefix}-double-ball-wing.stl')
+
+        return part
+    
+
+class ThumbHolderWingCreator(HolderWingCreator):
     WING_LENGTH = 10  # x-dir
     WING_WIDTH = 10  # z-dir
     WING_HEIGHT = 4  # y-dir
@@ -139,24 +169,16 @@ class HolderWingCreator:
     HEAT_SET_LENGTH = 8
     SCREW_HOLE_LENGTH = 9
     HOLE_CYLINDER_THICKNESS = 3
-    TOLERANCE = 0.1
 
     def create(self) -> Part:
-        screw = self.SCREW
-        r1 = screw.head_set_insert_radius
-        r2 = screw.radius + self.TOLERANCE
-        r3 = r1 + self.HOLE_CYLINDER_THICKNESS
-        dz = self.WING_WIDTH / 2
-        hole_outer_cylinder = Pos(Z=dz) * Cylinder(r3, self.WING_WIDTH)
-        heat_set_hole = Pos(Z=self.HEAT_SET_LENGTH / 2) * Cylinder(r1, self.HEAT_SET_LENGTH)
-        screw_hole = Pos(Z=self.SCREW_HOLE_LENGTH / 2) * Cylinder(r2, self.SCREW_HOLE_LENGTH)
-        wing_box = Pos(Z=dz) * Box(2 * (self.WING_LENGTH + r3), self.WING_HEIGHT, self.WING_WIDTH)
-        part = wing_box + hole_outer_cylinder - screw_hole - heat_set_hole
-
-        if WRITE_ENABLED:
-            export_stl(part, OUTPUT_DPATH / 'double-ball-wing.stl')
-
-        return part
+        return self._create(name_prefix='thumb',
+                            wing_length=self.WING_LENGTH, 
+                            wing_width=self.WING_WIDTH,
+                            wing_height=self.WING_HEIGHT,
+                            screw=self.SCREW,
+                            heat_set_length=self.HEAT_SET_LENGTH,
+                            screw_hole_length=self.SCREW_HOLE_LENGTH,
+                            hole_cylinder_thickness=self.HOLE_CYLINDER_THICKNESS)
 
 
 if __name__ == '__main__':

@@ -1,6 +1,8 @@
 import math
+import copy
 from typing import Iterator
 from ocp_vscode import show
+from build123d import Part, Compound, Pos, Rot, Cylinder, Box, export_stl, make_face, Polyline, extrude, Plane, CounterBoreHole, Sphere
 
 import data
 from base import OUTPUT_DPATH
@@ -12,9 +14,9 @@ type XY = tuple[float, float]
 
 
 def main():
-    #_create_assembly()
+    _create_assembly()
     #_create_finger_sphere()
-    _create_circle_base_plate()
+    #_create_circle_base_plate()
 
 
 def _create_circle_base_plate() -> Part:
