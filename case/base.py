@@ -8,6 +8,11 @@ OUTPUT_DPATH = Path('#output')
 type mm = float
 type Degree = float
 
+class KeyboardSide:
+    LEFT = 1
+    RIGHT = 2
+    
+
 STUD_RADIUS = 5.0 / 2  # s. base-plate.py
 STUD_HEIGHT = 4.0  # s. base-plate.py
 STUD_DISTANCE = 9.0  # s. base-plate.py

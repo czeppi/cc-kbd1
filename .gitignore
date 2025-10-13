@@ -2,13 +2,9 @@ __pycache__
 *.pyc
 /#misc
 complete_finger_part
-case/#venv
-case/#archive
-case/#fotos
-case/#output
-
+/#*
+/case/#*
 /#venv
-/#output
 /firmware/.idea
 /firmware/adafruit_hid
 /firmware/kmk
