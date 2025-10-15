@@ -19,13 +19,13 @@ def main():
 
 
 def create_assembly() -> Compound:
-    plate = CircleBasePlateCreator(KeyboardSide.RIGHT).create_plate()
-    cover = CircleBasePlateCreator(KeyboardSide.RIGHT).create_cover()
+    creator = CircleBasePlateCreator(KeyboardSide.LEFT)
+    plate = creator.create_plate()
+    cover = creator.create_cover()
     return Compound(label="base", children=[plate, cover])
 
 
 class CircleBasePlateCreator:
-    RADIUS = 52  # => cover has a radius of 50 (for the case, that a metal slice will be used in the future)
     # REL_HEIGHT = 0.75
     THICKNESS_TOP = 5
     TOP_FILLET_RADIUS = 10
@@ -66,11 +66,12 @@ class CircleBasePlateCreator:
     FINGER_CABEL_HOLE_WIDTH = 12
     FINGER_CABEL_ROT = 30
 
+    COVER_RADIUS = 50
     COVER_HEIGHT = 2
     COVER_STEP_LEN = 1
     COVER_NUM_SCREWS = 2
     COVER_SCREW_START_ANGLE = 45  # math. in degree
-    COVER_SCREW_DIST_FROM_CENTER = 43
+    COVER_SCREW_DIST_FROM_CENTER = 41
     COVER_SCREW = data.FLAT_HEAD_SCREW_M3
     COVER_SCREW_HEAD_HEIGHT_TOLERANCE = 0.5  # should not touch the ground
     COVER_SCREW_HEAT_INSERT_LEN = 4
@@ -80,6 +81,10 @@ class CircleBasePlateCreator:
 
     def __init__(self, keyboard_side: KeyboardSide):
         self._keyboard_side = keyboard_side
+
+    @property
+    def outer_radius(self) -> mm:
+        return self.COVER_RADIUS + self.THICKNESS_RIM/2 + self.TOLERANCE
 
     def create_plate(self) -> Part:
         """ origin: z=0 => bottom of plate
@@ -111,10 +116,10 @@ class CircleBasePlateCreator:
         return part
     
     def _create_body_with_rim(self) -> Part:
-        body = self._create_cut_circle(r=self.RADIUS, 
+        body = self._create_cut_circle(r=self.outer_radius, 
                                        h=self.THICKNESS_TOP + self.INTERIOR_HEIGHT + self.COVER_HEIGHT, 
                                        fillet_radius=self.TOP_FILLET_RADIUS)
-        neg_part = self._create_cut_circle(r=self.RADIUS - self.THICKNESS_RIM, 
+        neg_part = self._create_cut_circle(r=self.outer_radius - self.THICKNESS_RIM, 
                                            h=self.INTERIOR_HEIGHT + self.COVER_HEIGHT, 
                                            fillet_radius=self.TOP_FILLET_RADIUS - max(self.THICKNESS_RIM, self.THICKNESS_TOP))
         controller_corner = self._create_controller_corner()
@@ -140,8 +145,8 @@ class CircleBasePlateCreator:
         y0 = pos_radius * math.sin(angle_radians)
         z0 = self.COVER_HEIGHT
 
-        corner_x_len = self.RADIUS  # more than enough
-        corner_y_len = self.RADIUS  # more than enough
+        corner_x_len = self.outer_radius  # more than enough
+        corner_y_len = self.outer_radius  # more than enough
         corner_height = self.INTERIOR_HEIGHT + self.COVER_HEIGHT
         corner_x = corner_x_len / 2 - (data.PICO_BOARD.width / 2 + self.TOLERANCE)
         corner_y = corner_y_len / 2 + (data.PICO_BOARD.length / 2 + self.TOLERANCE)
@@ -150,7 +155,7 @@ class CircleBasePlateCreator:
         return Pos(x0, y0, z0) * Rot(Z=self.CONTROLLER_ROT_ANGLE) * corner_box
     
     def _create_cover_step_for_plate(self) -> Part:
-        r = self.RADIUS - self.THICKNESS_RIM / 2
+        r = self.outer_radius - self.THICKNESS_RIM / 2
         h = self.COVER_HEIGHT
         return Pos(Z=h/2) * Cylinder(radius=r, height=h)
     
@@ -192,13 +197,13 @@ class CircleBasePlateCreator:
             yield Pos(X=x, Y=y, Z=z0) * part
     
     def _create_finger_post(self) -> Part:
-        pos_radius = self.RADIUS - self.FINGER_POST_POS_DIST_FROM_BORDER
+        pos_radius = self.outer_radius - self.FINGER_POST_POS_DIST_FROM_BORDER
         return self._create_post(pos_angle=self.FINGER_POST_POS_ANGLE, pos_radius=pos_radius,
                                  sphere_radius=self.FINGER_POST_SPHERE_RADIUS,
                                  handle_radius=self.FINGER_POST_HANDLE_RADIUS, handle_len=self.FINGER_POST_HANDLE_LEN)
 
     def _create_thumb_post(self) -> Part:
-        pos_radius = self.RADIUS - self.THUMB_POST_POS_DIST_FROM_BORDER
+        pos_radius = self.outer_radius - self.THUMB_POST_POS_DIST_FROM_BORDER
         return self._create_post(pos_angle=self.THUMB_POST_POS_ANGLE, pos_radius=pos_radius,
                                  sphere_radius=self.THUMB_POST_SPHERE_RADIUS,
                                  handle_radius=self.THUMB_POST_HANDLE_RADIUS, handle_len=self.THUMB_POST_HANDLE_LEN)
@@ -223,7 +228,7 @@ class CircleBasePlateCreator:
         body_x_len = cyl_len + data.TRRS_SOCKET.box_length + 2 * self.TRRS_SOCKET_RIM + 2 * self.TOLERANCE - self.THICKNESS_RIM
         body_y_len = data.TRRS_SOCKET.box_width + 2 * self.TOLERANCE + 2 * self.TRRS_SOCKET_RIM
         body_height = self.INTERIOR_HEIGHT
-        body_x_pos = self.RADIUS - self.THICKNESS_RIM - body_x_len/2
+        body_x_pos = self.outer_radius - self.THICKNESS_RIM - body_x_len/2
 
         return Rot(Z=self.TRRS_SOCKET_POS_ANGLE) * Pos(X=body_x_pos, Z=z0 + body_height/2) * Box(body_x_len, body_y_len, body_height)
 
@@ -232,12 +237,12 @@ class CircleBasePlateCreator:
 
         cyl_radius = data.TRRS_SOCKET.cylinder_radius + self.TOLERANCE
         cyl_len = data.TRRS_SOCKET.cylinder_length
-        cyl_x_pos = self.RADIUS - cyl_len/2
+        cyl_x_pos = self.outer_radius - cyl_len/2
 
         box_x_len = data.TRRS_SOCKET.box_length
         box_y_len = data.TRRS_SOCKET.box_width + 2 * self.TOLERANCE
         box_height = data.TRRS_SOCKET.box_height + self.TOLERANCE
-        box_x_pos = self.RADIUS - cyl_len - box_x_len / 2
+        box_x_pos = self.outer_radius - cyl_len - box_x_len / 2
 
         box = Pos(X=box_x_pos, Z=z0 + box_height/2) * Box(box_x_len, box_y_len, box_height)
         cyl = Pos(X=cyl_x_pos, Z=z0 + box_height/2) * Rot(Y=90) * Cylinder(radius=cyl_radius, height=cyl_len)
@@ -245,7 +250,7 @@ class CircleBasePlateCreator:
         lower_cabel_box_x_len = (cyl_len + box_x_len) - self.THICKNESS_RIM
         lower_cabel_box_height = data.TRRS_SOCKET.cable_space
         lower_cabel_box_y_len = self.TRRS_SOCKET_RIM
-        lower_cabel_box_x_pos = self.RADIUS - self.THICKNESS_RIM - lower_cabel_box_x_len/2
+        lower_cabel_box_x_pos = self.outer_radius - self.THICKNESS_RIM - lower_cabel_box_x_len/2
         lower_cabel_box_y_pos = box_y_len/2 + lower_cabel_box_y_len/2
         if self._keyboard_side == KeyboardSide.LEFT:
             lower_cabel_box_y_pos *= -1 
@@ -253,7 +258,7 @@ class CircleBasePlateCreator:
 
         end_cabel_box_x_len = data.TRRS_SOCKET.cable_space
         end_cabel_box_y_len = box_y_len + self.TRRS_SOCKET_RIM
-        end_cabel_box_x_pos = self.RADIUS - cyl_len - box_x_len + end_cabel_box_x_len/2
+        end_cabel_box_x_pos = self.outer_radius - cyl_len - box_x_len + end_cabel_box_x_len/2
         end_cabel_box_y_pos = end_cabel_box_y_len/2
         if self._keyboard_side == KeyboardSide.LEFT:
             end_cabel_box_y_pos *= -1
@@ -262,7 +267,7 @@ class CircleBasePlateCreator:
         end_space_box_x_len = self.TRRS_SOCKET_RIM + 2 * self.TOLERANCE
         end_space_box_y_len = box_y_len + 2 * self.TRRS_SOCKET_RIM
         end_space_box_height = box_height
-        ens_space_box_x_pos = self.RADIUS - cyl_len - box_x_len - end_space_box_x_len/2
+        ens_space_box_x_pos = self.outer_radius - cyl_len - box_x_len - end_space_box_x_len/2
         end_space_box = Pos(X=ens_space_box_x_pos, Z=z0 + end_space_box_height/2) * Box(end_space_box_x_len, end_space_box_y_len, end_space_box_height)
 
         return Rot(Z=self.TRRS_SOCKET_POS_ANGLE) * (cyl + box + lower_cabel_box + end_cabel_box + end_space_box)
@@ -357,7 +362,7 @@ class CircleBasePlateCreator:
                 usb_box_height -= dz
                 usb_box_z -= dz/2
         else:
-            usb_box_deep = self.RADIUS
+            usb_box_deep = self.outer_radius
 
         body_len = data.PICO_BOARD.length + 2 * self.TOLERANCE
         usb_box_y = body_len/2 + usb_box_deep/2
@@ -405,16 +410,16 @@ class CircleBasePlateCreator:
         # cabel_radius = self.INTERIOR_HEIGHT / 2
         # height = 10
         # z = self.COVER_HEIGHT + self.INTERIOR_HEIGHT / 2
-        # return Rot(Z=self.FINGER_CABEL_HOLE_POS_ANGLE) * Pos(X=self.RADIUS, Z=z) * Rot(Y=90) * Cylinder(radius=cabel_radius, height=height)
+        # return Rot(Z=self.FINGER_CABEL_HOLE_POS_ANGLE) * Pos(X=self.outer_radius, Z=z) * Rot(Y=90) * Cylinder(radius=cabel_radius, height=height)
 
         hole_heigh = self.COVER_HEIGHT + self.FINGER_CABEL_HOLE_HEIGHT
         hole_x_len = 40  # exact value does not matter
         hole_y_len = self.FINGER_CABEL_HOLE_WIDTH
         z = hole_heigh / 2
-        return Rot(Z=self.FINGER_CABEL_HOLE_POS_ANGLE) * Pos(X=self.RADIUS, Z=z) * Rot(Z=self.FINGER_CABEL_ROT) * Box(hole_x_len, hole_y_len, hole_heigh)
+        return Rot(Z=self.FINGER_CABEL_HOLE_POS_ANGLE) * Pos(X=self.outer_radius, Z=z) * Rot(Z=self.FINGER_CABEL_ROT) * Box(hole_x_len, hole_y_len, hole_heigh)
 
     def create_cover(self) -> Part:
-        slice_radius = self.RADIUS - self.THICKNESS_RIM / 2 - self.TOLERANCE
+        slice_radius = self.COVER_RADIUS
         slice_height = self.COVER_HEIGHT
         slice = Pos(Z=slice_height/2) * Cylinder(radius=slice_radius, height=slice_height)
 
@@ -430,17 +435,12 @@ class CircleBasePlateCreator:
         screw_post_height = screw_head_height + self.COVER_SCREW_RIM - slice_height
         screw_post_body = Pos(Z=slice_height + screw_post_height/2) * Cylinder(radius=screw_post_radius, height=screw_post_height)
 
-        # this is a hack, cause the screw hole are too wide outside
-        lateral_outer_cyl = Cylinder(radius=self.RADIUS, height=screw_post_height)
-        lateral_inner_cyl = Cylinder(radius=self.RADIUS - self.THICKNESS_RIM - self.TOLERANCE, height=screw_post_height)
-        lateral_ring = Pos(Z=slice_height + screw_post_height/2) * (lateral_outer_cyl - lateral_inner_cyl)
-
         screw_posts_pos = [Pos(X=x, Y=y) * screw_post_body
                            for x, y in self._iter_cover_screw_positions()]
         screw_posts_neg = [Pos(X=x, Y=y) * (screw_head_neg_cyl + screw_hole)
                            for x, y in self._iter_cover_screw_positions()]
 
-        part = slice + screw_posts_pos - screw_posts_neg - lateral_ring
+        part = slice + screw_posts_pos - screw_posts_neg
         part.label = 'cover'
 
         if WRITE_ENABLED:
