@@ -317,7 +317,7 @@ class SingleSwitchHolderCreator(SwitchHolderCreatorBase):  # for index finger
         extra_depth = screw.head_radius * math.tan(angle_rad)
 
         screw_len = 6
-        screw_hole_len = screw_len - 2  # hole must be shorter than screw!
+        screw_hole_len = screw_len - 3  # hole must be shorter than screw!
 
         bore_z = 10  # any value big enough
         z_min = min(z for _, z in self._iter_foot_profile_points())

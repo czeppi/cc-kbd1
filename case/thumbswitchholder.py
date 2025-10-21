@@ -6,6 +6,7 @@ from build123d import export_stl, make_face
 from ocp_vscode import show
 
 from base import OUTPUT_DPATH
+from thumb_base import SWITCH_HOLDER_BASE_SCREW_DIST
 from finger_parts import SwitchPairHolderCreator, XY
 from hot_swap_socket import hot_swap_socket_data
 
@@ -42,7 +43,7 @@ class ThumbSwitchHolderCreator(SwitchPairHolderCreator):
 
     @staticmethod
     def iter_foot_base_conn_points() -> Iterator[XY]:
-        dy = 5
+        dy = SWITCH_HOLDER_BASE_SCREW_DIST / 2
         dx = -2
         yield dx, dy
         yield dx, -dy

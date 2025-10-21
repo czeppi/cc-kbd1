@@ -5,9 +5,8 @@ from build123d import Box, Cylinder, Part, Pos, Rot, Sphere, CounterBoreHole
 from build123d import export_stl
 from ocp_vscode import show
 
-import data
 from base import TOLERANCE, OUTPUT_DPATH
-from thumb_base import THICKNESS
+from thumb_base import THICKNESS, SWITCH_HOLDER_BASE_SCREW_DIST, SWITCH_HOLDER_BASE_SCREW
 
 type XY = tuple[float, float]
 
@@ -124,16 +123,6 @@ class TrackballHolderCreator:
         dz1 = -self.BOTTOM_PLATE_HEIGHT / 2 - self.FOOT_BOX_DIST_FROM_SPHERE_CENTER
         box = Pos(Z=dz1) * Box(self.BOTTOM_PLATE_X_LEN, self.BOTTOM_PLATE_Y_LEN, self.BOTTOM_PLATE_HEIGHT)
 
-        screw = data.FLAT_HEAD_SCREW_M2
-
-        # no place for heat inserter!
-        # screw_hole = CounterBoreHole(radius=screw.hole_radius,
-        #                              counter_bore_radius=screw.head_set_insert_radius,
-        #                              counter_bore_depth=2,
-        #                              depth=4)
-        # dz = -self.BOTTOM_PLATE_HEIGHT - self.FOOT_BOX_DIST_FROM_SPHERE_CENTER
-        # screw_hole = Pos(Z=dz) * Rot(Y=180) * screw_hole
-
         hole_radius = 1.0  # only a small hole
         hole_deep = 4.0
         dz2 = hole_deep / 2 - self.FOOT_BOX_DIST_FROM_SPHERE_CENTER - self.BOTTOM_PLATE_HEIGHT
@@ -161,7 +150,7 @@ class TrackballHolderCreator:
 
         # heat inserter set holes
         switch_holder_width = 16  # s. finger_parts.py
-        screw_dy = 5  # from center
+        screw_dy = SWITCH_HOLDER_BASE_SCREW_DIST / 2
         heat_inserter_hole = self._create_switch_holder_heat_inserter_hole()
 
         dx1 = x_len / 2 - switch_holder_width / 2
@@ -176,7 +165,7 @@ class TrackballHolderCreator:
         return Pos(X=dx2, Z=dz) * Rot(Y=angle) * box_with_holes
     
     def _create_switch_holder_heat_inserter_hole(self) -> Part:
-        screw = data.FLAT_HEAD_SCREW_M2_5
+        screw = SWITCH_HOLDER_BASE_SCREW
         counter_bore_depth = 2.5
 
         return CounterBoreHole(radius=screw.hole_radius,
