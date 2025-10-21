@@ -22,6 +22,17 @@ from keyboardhalf import KeyboardHalf, KeyGroup, VKeyPressEvent
 from keysdata import *
 from uart import LeftUart, MouseMove
 
+
+# TRRS
+#
+#   T R1 R2
+#   S
+#
+#   T:  Tip,    VCC, yellow
+#   R1: Ring1,  GND, red
+#   R2: Ring2,  RX,  blue
+#   S:  Sleeve, TX,  black
+
 LEFT_TX = board.GP0
 LEFT_RX = board.GP1
 
@@ -34,17 +45,17 @@ def main():
 
 class LeftKeyboardSide:
     _BUTTON_MAP = {
-        LEFT_INDEX_RIGHT: board.GP2,
-        LEFT_INDEX_UP: board.GP3,
-        LEFT_INDEX_DOWN: board.GP4,
-        LEFT_MIDDLE_UP: board.GP10,
-        LEFT_MIDDLE_DOWN: board.GP11,
-        LEFT_RING_UP: board.GP12,
-        LEFT_RING_DOWN: board.GP13,
-        LEFT_PINKY_UP: board.GP14,
-        LEFT_PINKY_DOWN: board.GP15,
-        LEFT_THUMB_UP: board.GP21,
-        LEFT_THUMB_DOWN: board.GP20,
+        LEFT_INDEX_RIGHT: board.GP2,  # blue
+        LEFT_INDEX_DOWN: board.GP3,  # yellow
+        LEFT_INDEX_UP: board.GP4,  # red
+        LEFT_MIDDLE_DOWN: board.GP10,  # blue
+        LEFT_MIDDLE_UP: board.GP11,  # yellow
+        LEFT_RING_DOWN: board.GP12,  # red
+        LEFT_RING_UP: board.GP13,  # blue
+        LEFT_PINKY_DOWN: board.GP14,  # red
+        LEFT_PINKY_UP: board.GP15,  # yellow
+        LEFT_THUMB_DOWN: board.GP21,  # red
+        LEFT_THUMB_UP: board.GP20,  # yellowu
     }
 
     def __init__(self):

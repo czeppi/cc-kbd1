@@ -11,6 +11,15 @@ from keyboardhalf import KeyboardHalf, KeyGroup
 from keysdata import *
 from uart import RightUart
 
+# TRRS
+#
+#   T R1 R2
+#   S
+#
+#   T:  Tip,    VCC, yellow
+#   R1: Ring1,  GND, red
+#   R2: Ring2,  RX,  blue
+#   S:  Sleeve, TX,  black
 
 RIGHT_TX = board.GP0
 RIGHT_RX = board.GP1
@@ -84,17 +93,17 @@ class TrackballSensor:
 
 class RightKeyboardSide:
     _BUTTON_MAP = {
-        RIGHT_INDEX_LEFT: board.GP2,
-        RIGHT_INDEX_UP: board.GP3,
-        RIGHT_INDEX_DOWN: board.GP4,
-        RIGHT_MIDDLE_UP: board.GP10,
-        RIGHT_MIDDLE_DOWN: board.GP11,
-        RIGHT_RING_UP: board.GP12,
-        RIGHT_RING_DOWN: board.GP13,
-        RIGHT_PINKY_UP: board.GP14,
-        RIGHT_PINKY_DOWN: board.GP15,
-        RIGHT_THUMB_UP: board.GP21,
-        RIGHT_THUMB_DOWN: board.GP20,
+        RIGHT_INDEX_LEFT: board.GP2,  # blue
+        RIGHT_INDEX_UP: board.GP3,  # yellow
+        RIGHT_INDEX_DOWN: board.GP4,  # red
+        RIGHT_MIDDLE_UP: board.GP10,  # blue
+        RIGHT_MIDDLE_DOWN: board.GP11,  # yellow
+        RIGHT_RING_UP: board.GP12,  # red
+        RIGHT_RING_DOWN: board.GP13,  # blue
+        RIGHT_PINKY_UP: board.GP14,  # red
+        RIGHT_PINKY_DOWN: board.GP15,  # yellow
+        RIGHT_THUMB_UP: board.GP21,  # red
+        RIGHT_THUMB_DOWN: board.GP20,  # yellow
     }
 
     def __init__(self):
