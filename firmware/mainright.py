@@ -32,10 +32,21 @@ def main():
 
 
 class TrackballSensor:
-    _SCK = board.GP18  # green cable
-    _MISO = board.GP16  # purple cable
-    _MOSI = board.GP19  # blue cable
-    _CS = board.GP22
+    """ PMW3389 pins: RST GND MT SS SCK MOSI MISO VIN
+
+      RST:  -
+      GND:  black (old: red)
+      MT:   -
+      SS:   yellow (old: yellow)
+      SCK:  blue (old: green)
+      MOSI: blue (old: blue)
+      MISO: yellow (old: purple)
+      VSYS: red (old: gray)
+    """
+    _SCK = board.GP18
+    _MISO = board.GP16
+    _MOSI = board.GP19
+    _CS = board.GP17  # == SS
     _MT_PIN = board.A0
     _TARGET_CPI = 800
 
