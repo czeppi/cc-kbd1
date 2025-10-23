@@ -90,13 +90,14 @@ class LeftUart(UartBase):
             elif read_1st_bytes == _MOUSE_BYTES:
                 byte1, byte2 = self._uart.read(2)
                 print(f'uart readd mouse: byte1={byte1}, byte2={byte2}')
-                dx = int.from_bytes(bytes([byte1]), 'big', signed=True)
-                dy = int.from_bytes(bytes([byte2]), 'big', signed=True)
+                dx = byte1 if byte1 < 128 else byte1 - 256
+                dy = byte2 if byte2 < 128 else byte2 - 256
                 print(f'uart read mouse: dx={dx}, dy={dy}')
-                yield MouseMove(dx, dy)
+                yield MouseMove(-dx, -dy)
             elif read_1st_bytes == _KEY_EVENT_BYTES:
                 read_bytes = self._uart.read(1)
-                signed_value = int.from_bytes(read_bytes, 'big', signed=True)
+                byte1 = read_bytes[0]
+                signed_value = byte1 if byte1 < 128 else byte1 - 256
                 vkey_serial = abs(signed_value)
                 pressed = (signed_value > 0)
                 print(f'uart read key event: {vkey_serial} {pressed}')

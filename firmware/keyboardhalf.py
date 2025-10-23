@@ -65,7 +65,7 @@ class VKeyPressEvent:
 
 
 class KeyGroup:
-    COMBO_TERM = 50  # ms
+    COMBO_TERM = 100  # ms
 
     def __init__(self, serial: KeyGroupSerial, vkey_map: dict[VirtualKeySerial, list[PhysicalKeySerial]]):
         # static
