@@ -5,7 +5,7 @@ from build123d import Box, Part, Pos, Rot, Sketch, Polyline, Plane, Solid, Locat
 from build123d import export_stl, make_face
 from ocp_vscode import show
 
-from base import OUTPUT_DPATH
+from base import OUTPUT_DPATH, KeyboardSide
 from thumb_base import SWITCH_HOLDER_BASE_SCREW_DIST
 from finger_parts import SwitchPairHolderCreator, XY
 from hot_swap_socket import hot_swap_socket_data
@@ -14,7 +14,7 @@ WRITE_ENABLED = True
 
 
 def main():
-    creator = ThumbSwitchHolderCreator()
+    creator = ThumbSwitchHolderCreator(side=KeyboardSide.LEFT)
     holder = creator.create()
     show(holder)
 
@@ -22,29 +22,38 @@ def main():
 class ThumbSwitchHolderCreator(SwitchPairHolderCreator):
     SLANTED_ANGLE = 15
 
+    def __init__(self, side: KeyboardSide):
+        super().__init__()
+        self._side = side
+
     def create(self) -> list[Solid]:
         neg_slanted_box = self._create_slanted_neg_part()
-        neg_boxes = list(self._iter_neg_boxes())
-        neg_parts = neg_boxes + [neg_slanted_box]
+        if self._side == KeyboardSide.RIGHT:
+            neg_boxes = list(self._iter_neg_boxes())
+            neg_parts = neg_boxes + [neg_slanted_box]
+            side_name = 'right'
+        else:
+            neg_parts = [neg_slanted_box]
+            side_name = 'left'
+
 
         top_part = self._create_top() - neg_parts
         middle_part = self._create_middle_part() - neg_parts
         foot_part = self._create_foot() - neg_parts
 
         if WRITE_ENABLED:
-            export_stl(top_part, OUTPUT_DPATH / 'thumb-switch-holder-top.stl')
-            export_stl(middle_part, OUTPUT_DPATH / 'thumb-switch-holder-middle.stl')
-            export_stl(foot_part, OUTPUT_DPATH / 'thumb-switch-holder-foot.stl')
+            export_stl(top_part, OUTPUT_DPATH / f'thumb-switch-holder-{side_name}-top.stl')
+            export_stl(middle_part, OUTPUT_DPATH / f'thumb-switch-holder-{side_name}-middle.stl')
+            export_stl(foot_part, OUTPUT_DPATH / f'thumb-switch-holder-{side_name}-foot.stl')
 
         return [top_part, middle_part, foot_part]
 
     def _iter_top_foot_conn_points(self) -> Iterator[XY]:
         yield -1, 0
 
-    @staticmethod
-    def iter_foot_base_conn_points() -> Iterator[XY]:
+    def iter_foot_base_conn_points(self) -> Iterator[XY]:
         dy = SWITCH_HOLDER_BASE_SCREW_DIST / 2
-        dx = -2
+        dx = -2 if self._side == KeyboardSide.RIGHT else -1
         yield dx, dy
         yield dx, -dy
 

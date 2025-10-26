@@ -149,8 +149,7 @@ class SingleSwitchHolderCreator(SwitchHolderCreatorBase):  # for index finger
         yield -x, 0
         yield x, 0
 
-    @staticmethod
-    def iter_foot_base_conn_points() -> Iterator[XY]:
+    def iter_foot_base_conn_points(self) -> Iterator[XY]:
         """ after Rot(Z=90)
         """
         yield 0, 0
@@ -345,8 +344,7 @@ class SwitchPairHolderCreator(SwitchHolderCreatorBase):
     def _iter_top_foot_conn_points(self) -> Iterator[XY]:
         yield 0, 0
 
-    @staticmethod
-    def iter_foot_base_conn_points() -> Iterator[XY]:
+    def iter_foot_base_conn_points(self) -> Iterator[XY]:
         dy = 5
         yield 0, dy
         yield 0, -dy
