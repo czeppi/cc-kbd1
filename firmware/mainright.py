@@ -16,10 +16,10 @@ from uart import RightUart
 #   T R1 R2
 #   S
 #
-#   T:  Tip,    VCC, yellow
-#   R1: Ring1,  GND, red
+#   T:  Tip,    VCC, red
+#   R1: Ring1,  GND, black
 #   R2: Ring2,  RX,  blue
-#   S:  Sleeve, TX,  black
+#   S:  Sleeve, TX,  yellow
 
 RIGHT_TX = board.GP0
 RIGHT_RX = board.GP1
@@ -35,13 +35,13 @@ class TrackballSensor:
     """ PMW3389 pins: RST GND MT SS SCK MOSI MISO VIN
 
       RST:  -
-      GND:  black (old: red)
+      GND:  black
       MT:   -
-      SS:   yellow (old: yellow)
-      SCK:  blue (old: green)
-      MOSI: blue (old: blue)
-      MISO: yellow (old: purple)
-      VSYS: red (old: gray)
+      SS:   white
+      SCK:  blue
+      MOSI: green
+      MISO: yellow
+      VSYS: red
     """
     _SCK = board.GP18
     _MISO = board.GP16

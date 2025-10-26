@@ -1,7 +1,7 @@
 import math
 from typing import Iterator
 from ocp_vscode import show
-from build123d import Part, Compound, Pos, Rot, Cylinder, Box, export_stl, make_face, Polyline, extrude, Plane, CounterBoreHole, Sphere, Axis, fillet
+from build123d import Part, Compound, Pos, Rot, Cylinder, Box, export_stl, make_face, Polyline, extrude, Plane, CounterBoreHole, Sphere, Axis, fillet, Solid
 
 import data
 from base import OUTPUT_DPATH, mm, Degree, KeyboardSide
@@ -14,8 +14,10 @@ type XY = tuple[float, float]
 
 
 def main():
-    assembly = create_assembly()
-    show(assembly)
+    #part = CircleBasePlateCreator(KeyboardSide.LEFT).create_controller_holder()
+    part = CircleBasePlateCreator(KeyboardSide.LEFT).create_trrs_stopper()
+    #part = create_assembly()
+    show(part)
 
 
 def create_assembly() -> Compound:
@@ -447,6 +449,37 @@ class CircleBasePlateCreator:
             export_stl(part, OUTPUT_DPATH / 'circle-base-cover.stl')
         
         return part
+
+    def create_trrs_stopper(self) -> Solid: 
+        overlap = 2
+        height = data.TRRS_SOCKET.box_height
+        length = data.TRRS_SOCKET.box_width + 2 * self.TRRS_SOCKET_RIM + 2 * overlap
+        width = self.TRRS_SOCKET_RIM
+
+        box = Box(length, width, height)
+
+        if WRITE_ENABLED:
+            export_stl(box, OUTPUT_DPATH / 'trrs_stopper.stl')
+
+        return box
+
+    def create_controller_holder(self) -> Solid:
+        height = 2
+        width = 8
+        length = 18
+        box = Box(length, width, height)
+        screw = data.FLAT_HEAD_SCREW_M2
+        r = screw.hole_radius + self.TOLERANCE
+        hole = Pos(X=length/2 - 5) * Cylinder(radius=r, height=height)
+        part = box - hole
+
+        if WRITE_ENABLED:
+            export_stl(part, OUTPUT_DPATH / 'controller-holder-plate.stl')
+
+        return part
+    
+        
+
     
 
 if __name__ == '__main__':

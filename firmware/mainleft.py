@@ -28,10 +28,11 @@ from uart import LeftUart, MouseMove
 #   T R1 R2
 #   S
 #
-#   T:  Tip,    VCC, yellow
-#   R1: Ring1,  GND, red
+#   T:  Tip,    VCC, red
+#   R1: Ring1,  GND, black
 #   R2: Ring2,  RX,  blue
-#   S:  Sleeve, TX,  black
+#   S:  Sleeve, TX,  yellow
+
 
 LEFT_TX = board.GP0
 LEFT_RX = board.GP1
