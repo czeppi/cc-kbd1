@@ -14,9 +14,9 @@ type XY = tuple[float, float]
 
 
 def main():
-    #part = CircleBasePlateCreator(KeyboardSide.LEFT).create_controller_holder()
+    part = CircleBasePlateCreator(KeyboardSide.LEFT).create_controller_holder()
     part = CircleBasePlateCreator(KeyboardSide.LEFT).create_trrs_stopper()
-    #part = create_assembly()
+    part = create_assembly()
     show(part)
 
 
@@ -315,7 +315,7 @@ class CircleBasePlateCreator:
         dist_holder_len = max(data.PICO_BOARD.pins_height, data.PICO_BOARD.usb_height) + self.TOLERANCE
         dist_holders = list(self._iter_controller_dist_holder())
         
-        top_holder_x_len = data.PICO_BOARD.usb_width + 2 * self.TOLERANCE + 2 * 3  # 3 = x_small_len, s. _iter_controller_dist_holder
+        top_holder_x_len = data.PICO_BOARD.usb_width + 2 * 1  # a little bit wider, than the usb port
         top_holder_y_len = 3
         top_holder_height = 2
         top_holder_y = inner_len / 2 - top_holder_y_len / 2
